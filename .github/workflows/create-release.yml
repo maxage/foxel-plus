@@ -1,0 +1,83 @@
+name: Create Release with JS File
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        default: 'v1.3.0'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Build plugin
+      run: |
+        cd foxel-image-viewer
+        npm ci
+        npm run build
+        
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        cp foxel-image-viewer/dist/plugin.js release/foxel-image-viewer.js
+        
+        # Create release notes
+        cat > release/RELEASE_NOTES.md << 'EOF'
+        # 🎉 Foxel Plus 发布说明
+        
+        ## 📦 包含的插件
+        
+        ### 🖼️ foxel-image-viewer (v1.0.0)
+        
+        **描述**: 一个功能丰富的图片查看器插件，支持缩放、拖拽、旋转等操作
+        **文件大小**: $(du -h release/foxel-image-viewer.js | cut -f1)
+        **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF
+        
+        #### 主要功能
+        - 🔍 智能缩放（10%-500%）
+        - 🖱️ 拖拽移动
+        - 🎛️ 工具栏控制
+        - 🌙 深色主题
+        - 📱 响应式设计
+        
+        #### 安装方法
+        1. 下载 \`foxel-image-viewer.js\` 文件
+        2. 将文件复制到 Foxel 的 \`web/public/plugins/\` 目录
+        3. 在 Foxel 的"应用"页面安装插件
+        4. 选择对应文件类型即可使用
+        
+        #### 技术特性
+        - **完全自包含** - 单文件输出，无外部依赖
+        - **类型安全** - 基于 TypeScript 开发
+        - **现代化 UI** - 使用 React 18 构建
+        - **高性能** - ESBuild 优化构建
+        - **即插即用** - 符合 Foxel 插件规范
+        EOF
+        
+        echo "📋 Release files prepared:"
+        ls -la release/
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ inputs.version }}
+        name: Foxel Plus ${{ inputs.version }}
+        files: |
+          release/foxel-image-viewer.js
+          release/RELEASE_NOTES.md
+        body_path: release/RELEASE_NOTES.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
