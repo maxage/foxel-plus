@@ -10,6 +10,12 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     
+    strategy:
+      matrix:
+        plugin: [
+          'foxel-image-viewer'
+        ]
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -19,36 +25,30 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: ${{ matrix.plugin }}/package-lock.json
         
     - name: Install dependencies
       run: |
-        for plugin in foxel-*/; do
-          if [ -f "$plugin/package.json" ]; then
-            echo "Installing dependencies for $plugin..."
-            cd "$plugin"
-            npm ci
-            cd ..
-          fi
-        done
+        cd ${{ matrix.plugin }}
+        npm ci
         
     - name: Type check
       run: |
-        for plugin in foxel-*/; do
-          if [ -f "$plugin/tsconfig.json" ]; then
-            echo "Type checking $plugin..."
-            cd "$plugin"
-            npx tsc --noEmit
-            cd ..
-          fi
-        done
+        cd ${{ matrix.plugin }}
+        npx tsc --noEmit
         
     - name: Build test
       run: |
-        for plugin in foxel-*/; do
-          if [ -f "$plugin/package.json" ]; then
-            echo "Building $plugin..."
-            cd "$plugin"
-            npm run build
-            cd ..
-          fi
-        done
+        cd ${{ matrix.plugin }}
+        npm run build
+        
+    - name: Check build output
+      run: |
+        cd ${{ matrix.plugin }}
+        if [ -f "dist/plugin.js" ]; then
+          echo "✅ Build successful for ${{ matrix.plugin }}"
+          echo "📊 File size: $(du -h dist/plugin.js | cut -f1)"
+        else
+          echo "❌ Build failed for ${{ matrix.plugin }}"
+          exit 1
+        fi

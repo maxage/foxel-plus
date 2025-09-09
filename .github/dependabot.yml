@@ -1,29 +1,19 @@
 version: 2
 updates:
-  # Enable version updates for npm
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "your-username"
-    assignees:
-      - "your-username"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
   # Enable version updates for npm in each plugin directory
   - package-ecosystem: "npm"
     directory: "/foxel-image-viewer"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
     reviewers:
-      - "your-username"
+      - "maxage"
     assignees:
-      - "your-username"
+      - "maxage"
     commit-message:
       prefix: "chore"
       include: "scope"
+    # Ignore major version updates for now
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
