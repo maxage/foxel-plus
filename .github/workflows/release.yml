@@ -58,7 +58,7 @@ jobs:
         
         # Create release notes
         cat > release/RELEASE_NOTES.md << 'EOF'
-        # 🎉 Foxel Plus Release Notes
+        # 🎉 Foxel Plus 发布说明
         
         ## 📦 包含的插件
         
@@ -84,6 +84,12 @@ jobs:
             echo "- 🎛️ 工具栏控制" >> release/RELEASE_NOTES.md
             echo "- 🌙 深色主题" >> release/RELEASE_NOTES.md
             echo "- 📱 响应式设计" >> release/RELEASE_NOTES.md
+            echo "" >> release/RELEASE_NOTES.md
+            echo "#### 安装方法" >> release/RELEASE_NOTES.md
+            echo "1. 下载 \`${plugin_name}.js\` 文件" >> release/RELEASE_NOTES.md
+            echo "2. 将文件复制到 Foxel 的 \`web/public/plugins/\` 目录" >> release/RELEASE_NOTES.md
+            echo "3. 在 Foxel 的"应用"页面安装插件" >> release/RELEASE_NOTES.md
+            echo "4. 选择对应文件类型即可使用" >> release/RELEASE_NOTES.md
             echo "" >> release/RELEASE_NOTES.md
           fi
         done

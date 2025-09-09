@@ -6,10 +6,12 @@
   "scripts": {
     "build": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"'",
     "dev": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --outfile=dist/plugin.js --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "validate": "node validate-plugin.js",
+    "prebuild": "npm run validate"
   },
   "keywords": ["foxel", "plugin", "image", "viewer"],
-  "author": "Your Name",
+  "author": "Foxel Plus Team",
   "license": "MIT",
   "devDependencies": {
     "@types/react": "^18.2.79",
