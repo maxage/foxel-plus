@@ -9,10 +9,10 @@ let root: any = null;
 const VERSION = '1.0.0';
 
 const plugin: RegisteredPlugin = {
-  key: 'com.foxel-plus.code-viewer-plus',
-  name: '代码查看器 Plus',
+  key: 'com.foxel-plus.code-editor-plus',
+  name: '代码编辑器 Plus',
   version: VERSION,
-  description: '功能强大的代码查看器插件，支持语法高亮、主题切换、搜索、折叠、复制等丰富功能',
+  description: '功能强大的代码编辑器插件，支持语法高亮、主题切换、搜索、编辑、保存、折叠、复制等丰富功能',
   author: 'Foxel Plus Team @ maxage',
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',

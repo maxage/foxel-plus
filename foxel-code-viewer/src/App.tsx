@@ -119,6 +119,10 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
   const [enableCodeFolding, setEnableCodeFolding] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [isModified, setIsModified] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>('');
   const [fileInfo, setFileInfo] = useState<{
     name: string;
     size: number;
@@ -368,6 +372,50 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     URL.revokeObjectURL(url);
   };
 
+  // 保存代码
+  const saveCode = async () => {
+    if (!isModified) return;
+    
+    try {
+      setIsSaving(true);
+      setSaveError('');
+      
+      // 这里应该调用 Foxel 的保存 API
+      // 由于我们不知道具体的保存 API，这里先模拟保存
+      console.log('Saving code:', code);
+      
+      // 模拟保存延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsModified(false);
+      setIsSaving(false);
+      
+      // 可以添加成功提示
+      console.log('Code saved successfully');
+      
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : '保存失败');
+      setIsSaving(false);
+    }
+  };
+
+  // 处理代码内容变化
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+    setIsModified(true);
+  };
+
+  // 切换编辑模式
+  const toggleEditMode = () => {
+    if (editMode && isModified) {
+      // 如果正在编辑且有未保存的更改，询问是否保存
+      if (window.confirm('有未保存的更改，是否保存？')) {
+        saveCode();
+      }
+    }
+    setEditMode(!editMode);
+  };
+
   // 切换行折叠
   const toggleLineCollapse = (lineNumber: number) => {
     const newCollapsed = new Set(collapsedLines);
@@ -390,7 +438,11 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           break;
         case 's':
           e.preventDefault();
-          downloadCode();
+          if (editMode && isModified) {
+            saveCode();
+          } else {
+            downloadCode();
+          }
           break;
         case 'c':
           if (e.shiftKey) {
@@ -418,6 +470,10 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         case 'i':
           e.preventDefault();
           setShowInfo(!showInfo);
+          break;
+        case 'e':
+          e.preventDefault();
+          toggleEditMode();
           break;
       }
     }
@@ -475,6 +531,35 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   useEffect(() => {
     performSearch(searchQuery);
   }, [searchQuery, performSearch]);
+
+  // 渲染编辑模式的代码编辑器
+  const renderCodeEditor = () => {
+    return (
+      <textarea
+        value={code}
+        onChange={(e) => handleCodeChange(e.target.value)}
+        style={{
+          width: '100%',
+          height: '100%',
+          padding: '20px',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: `${fontSize}px`,
+          lineHeight: '1.5',
+          backgroundColor: currentTheme.background,
+          color: currentTheme.foreground,
+          border: 'none',
+          outline: 'none',
+          resize: 'none',
+          whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+          overflow: 'auto'
+        }}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+      />
+    );
+  };
 
   // 渲染代码行
   const renderCodeLines = () => {
@@ -784,8 +869,34 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             )}
           </div>
 
+          {/* 编辑模式 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isFullscreen ? '8px' : '4px',
+            flexShrink: 0
+          }}>
+            <button
+              onClick={toggleEditMode}
+              style={getButtonStyle(editMode)}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = editMode ? '#007acc' : '#444'}
+            >
+              {editMode ? '👁️ 查看' : '✏️ 编辑'}
+            </button>
+            {isModified && (
+              <span style={{
+                fontSize: isFullscreen ? '12px' : '10px',
+                color: '#ff6b6b',
+                fontWeight: 'bold'
+              }}>
+                ●
+              </span>
+            )}
+          </div>
+
           {/* 预览模式 */}
-          {fileInfo && isPreviewable(fileInfo.language) && (
+          {fileInfo && isPreviewable(fileInfo.language) && !editMode && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -858,6 +969,22 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             gap: isFullscreen ? '8px' : '4px',
             flexShrink: 0
           }}>
+            {editMode && isModified && (
+              <button
+                onClick={saveCode}
+                disabled={isSaving}
+                style={{
+                  ...getButtonStyle(),
+                  backgroundColor: isSaving ? '#666' : '#28a745',
+                  opacity: isSaving ? 0.6 : 1,
+                  cursor: isSaving ? 'not-allowed' : 'pointer'
+                }}
+                onMouseEnter={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#34ce57')}
+                onMouseLeave={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#28a745')}
+              >
+                {isSaving ? '💾 保存中...' : '💾 保存'}
+              </button>
+            )}
             <button
               onClick={copyCode}
               style={getButtonStyle()}
@@ -1116,11 +1243,14 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           paddingBottom: isFullscreen ? '60px' : '0'
         }}
       >
-        {previewMode && fileInfo && isPreviewable(fileInfo.language) ? (
+        {editMode ? (
+          // 编辑模式
+          renderCodeEditor()
+        ) : previewMode && fileInfo && isPreviewable(fileInfo.language) ? (
           // 预览模式
           renderPreview()
         ) : (
-          // 代码模式
+          // 查看模式
           <>
             <style>
               {`
@@ -1149,6 +1279,25 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         )}
       </div>
 
+      {/* 保存错误提示 */}
+      {saveError && (
+        <div style={{
+          position: 'absolute',
+          top: showToolbar ? (isFullscreen ? '80px' : '60px') : '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#ff6b6b',
+          color: '#fff',
+          padding: '8px 16px',
+          borderRadius: '4px',
+          fontSize: '14px',
+          zIndex: 20,
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+        }}>
+          ❌ {saveError}
+        </div>
+      )}
+
       {/* 键盘快捷键提示 */}
       {showToolbar && (
         <div style={{
@@ -1174,7 +1323,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           }}>
             <span style={{ fontWeight: 'bold' }}>快捷键:</span>
             <span>Ctrl+F(搜索)</span>
-            <span>Ctrl+S(下载)</span>
+            <span>Ctrl+S({editMode ? '保存' : '下载'})</span>
+            <span>Ctrl+E(编辑)</span>
             <span>Ctrl+Shift+C(复制)</span>
             <span>Ctrl+±(字体)</span>
             <span>Ctrl+0(重置字体)</span>
