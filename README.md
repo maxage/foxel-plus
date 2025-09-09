@@ -26,16 +26,21 @@
 #### 方法一：直接下载（推荐）
 
 1. 访问 [Releases 页面](https://github.com/maxage/foxel-plus/releases/latest)
-2. 下载所需的插件文件（如 `foxel-image-viewer-plus.js`）
+2. 下载所需的插件文件：
+   - 图片查看器：`foxel-image-viewer-plus.js`
+   - 代码查看器：`foxel-code-viewer-plus.js`
 3. 在 Foxel 的"应用"页面添加插件
-4. 输入插件 URL: `https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js`
-5. 安装完成后即可在文件管理器中查看图片
+4. 输入对应的插件 URL：
+   - 图片查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js`
+   - 代码查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-viewer-plus.js`
+5. 安装完成后即可在文件管理器中查看对应文件类型
 
 ### 📦 可用插件
 
 | 插件名称 | 描述 | 作者 | 下载链接 |
 |---------|------|------|----------|
 | **foxel-image-viewer-plus** | 功能强大的图片查看器 Plus，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js) |
+| **foxel-code-viewer-plus** | 功能强大的代码查看器 Plus，支持语法高亮、主题切换、搜索、折叠、复制等丰富功能 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-viewer-plus.js) |
 
 #### 方法二：从源码构建
 
@@ -44,15 +49,16 @@
 git clone https://github.com/maxage/foxel-plus.git
 cd foxel-plus
 
-# 进入插件目录
+# 构建图片查看器插件
 cd foxel-image-viewer
-
-# 安装依赖
 npm install
-
-# 构建插件
 npm run build
+# 构建完成后，dist/plugin.js 就是可用的插件文件
 
+# 构建代码查看器插件
+cd ../foxel-code-viewer
+npm install
+npm run build
 # 构建完成后，dist/plugin.js 就是可用的插件文件
 ```
 
