@@ -111,7 +111,7 @@ npm run build
 
 ```bash
 # 方式一：直接下载
-wget https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js
+wget https://github.com/maxage/foxel-plus/raw/main/foxel-image-viewer.js
 
 # 方式二：从源码构建
 git clone https://github.com/maxage/foxel-plus.git
