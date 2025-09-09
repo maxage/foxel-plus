@@ -117,6 +117,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const [showToolbar, setShowToolbar] = useState<boolean>(true);
   const [toolbarTimeout, setToolbarTimeout] = useState<number | null>(null);
   const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
+  const [enableCodeFolding, setEnableCodeFolding] = useState<boolean>(false);
+  const [previewMode, setPreviewMode] = useState<boolean>(false);
   const [fileInfo, setFileInfo] = useState<{
     name: string;
     size: number;
@@ -127,6 +129,36 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 检测是否支持预览模式
+  const isPreviewable = (language: string): boolean => {
+    return ['markdown', 'html', 'htm', 'xml', 'svg'].includes(language);
+  };
+
+  // 渲染预览内容
+  const renderPreviewContent = (code: string, language: string): string => {
+    if (language === 'markdown') {
+      // 简单的 Markdown 渲染
+      return code
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+        .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
+        .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\n/g, '<br>');
+    } else if (language === 'html' || language === 'htm') {
+      return code;
+    } else if (language === 'xml' || language === 'svg') {
+      return code;
+    }
+    return code;
+  };
 
   // 检测文件语言
   const detectLanguage = (filename: string): string => {
@@ -462,7 +494,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             display: 'flex',
             minHeight: '20px',
             lineHeight: '1.5',
-            position: 'relative'
+            position: 'relative',
+            alignItems: 'flex-start'
           }}
         >
           {showLineNumbers && (
@@ -475,12 +508,51 @@ const App: React.FC<AppProps> = ({ ctx }) => {
                 userSelect: 'none',
                 flexShrink: 0,
                 fontSize: `${fontSize}px`,
-                fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                lineHeight: '1.5'
               }}
             >
               {lineNumber}
             </div>
           )}
+          
+          {/* 代码折叠按钮 - 只在启用时显示，且不重叠 */}
+          {enableCodeFolding && line.trim() && (
+            <div
+              style={{
+                width: '20px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexShrink: 0,
+                padding: '0 4px'
+              }}
+            >
+              <button
+                onClick={() => toggleLineCollapse(lineNumber)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: currentTheme.comment,
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  padding: '2px',
+                  opacity: 0.6,
+                  borderRadius: '2px',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+              >
+                {isCollapsed ? '▶' : '▼'}
+              </button>
+            </div>
+          )}
+          
           <div
             style={{
               flex: 1,
@@ -488,36 +560,59 @@ const App: React.FC<AppProps> = ({ ctx }) => {
               fontSize: `${fontSize}px`,
               fontFamily: 'Monaco, Consolas, "Courier New", monospace',
               whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-              overflow: wordWrap ? 'visible' : 'auto'
+              overflow: wordWrap ? 'visible' : 'auto',
+              lineHeight: '1.5'
             }}
             dangerouslySetInnerHTML={{
               __html: isCollapsed ? '...' : highlightedLines[index] || ''
             }}
           />
-          {line.trim() && (
-            <button
-              onClick={() => toggleLineCollapse(lineNumber)}
-              style={{
-                position: 'absolute',
-                left: showLineNumbers ? '70px' : '10px',
-                top: '2px',
-                background: 'transparent',
-                border: 'none',
-                color: currentTheme.comment,
-                cursor: 'pointer',
-                fontSize: '12px',
-                padding: '2px 4px',
-                opacity: 0.5
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
-            >
-              {isCollapsed ? '▶' : '▼'}
-            </button>
-          )}
         </div>
       );
     });
+  };
+
+  // 渲染预览内容
+  const renderPreview = () => {
+    if (!fileInfo || !isPreviewable(fileInfo.language)) {
+      return null;
+    }
+
+    const previewContent = renderPreviewContent(code, fileInfo.language);
+    
+    return (
+      <div
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '20px',
+          backgroundColor: currentTheme.background,
+          color: currentTheme.foreground,
+          fontSize: `${fontSize}px`,
+          lineHeight: '1.6'
+        }}
+      >
+        {fileInfo.language === 'html' || fileInfo.language === 'htm' ? (
+          <iframe
+            srcDoc={previewContent}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              backgroundColor: '#fff'
+            }}
+          />
+        ) : (
+          <div
+            dangerouslySetInnerHTML={{ __html: previewContent }}
+            style={{
+              maxWidth: '100%',
+              wordWrap: 'break-word'
+            }}
+          />
+        )}
+      </div>
+    );
   };
 
   const getButtonStyle = (isActive = false) => ({
@@ -688,6 +783,25 @@ const App: React.FC<AppProps> = ({ ctx }) => {
               </span>
             )}
           </div>
+
+          {/* 预览模式 */}
+          {fileInfo && isPreviewable(fileInfo.language) && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isFullscreen ? '8px' : '4px',
+              flexShrink: 0
+            }}>
+              <button
+                onClick={() => setPreviewMode(!previewMode)}
+                style={getButtonStyle(previewMode)}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = previewMode ? '#007acc' : '#444'}
+              >
+                {previewMode ? '📝 代码' : '👁️ 预览'}
+              </button>
+            </div>
+          )}
 
           {/* 主题选择 */}
           <div style={{
@@ -910,6 +1024,30 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           </div>
 
           <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <input
+                type="checkbox"
+                checked={enableCodeFolding}
+                onChange={(e) => setEnableCodeFolding(e.target.checked)}
+              />
+              代码折叠
+            </label>
+          </div>
+
+          {fileInfo && isPreviewable(fileInfo.language) && (
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={previewMode}
+                  onChange={(e) => setPreviewMode(e.target.checked)}
+                />
+                预览模式
+              </label>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '8px' }}>
               字体大小: {fontSize}px
             </label>
@@ -978,29 +1116,37 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           paddingBottom: isFullscreen ? '60px' : '0'
         }}
       >
-        <style>
-          {`
-            .keyword { color: ${currentTheme.keyword}; font-weight: bold; }
-            .string { color: ${currentTheme.string}; }
-            .comment { color: ${currentTheme.comment}; font-style: italic; }
-            .number { color: ${currentTheme.number}; }
-            .function { color: ${currentTheme.function}; }
-            .variable { color: ${currentTheme.variable}; }
-            .type { color: ${currentTheme.type}; }
-            .operator { color: ${currentTheme.operator}; }
-            .punctuation { color: ${currentTheme.punctuation}; }
-          `}
-        </style>
-        <div style={{
-          padding: '20px',
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: `${fontSize}px`,
-          lineHeight: '1.5',
-          backgroundColor: currentTheme.background,
-          color: currentTheme.foreground
-        }}>
-          {renderCodeLines()}
-        </div>
+        {previewMode && fileInfo && isPreviewable(fileInfo.language) ? (
+          // 预览模式
+          renderPreview()
+        ) : (
+          // 代码模式
+          <>
+            <style>
+              {`
+                .keyword { color: ${currentTheme.keyword}; font-weight: bold; }
+                .string { color: ${currentTheme.string}; }
+                .comment { color: ${currentTheme.comment}; font-style: italic; }
+                .number { color: ${currentTheme.number}; }
+                .function { color: ${currentTheme.function}; }
+                .variable { color: ${currentTheme.variable}; }
+                .type { color: ${currentTheme.type}; }
+                .operator { color: ${currentTheme.operator}; }
+                .punctuation { color: ${currentTheme.punctuation}; }
+              `}
+            </style>
+            <div style={{
+              padding: '20px',
+              fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+              fontSize: `${fontSize}px`,
+              lineHeight: '1.5',
+              backgroundColor: currentTheme.background,
+              color: currentTheme.foreground
+            }}>
+              {renderCodeLines()}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 键盘快捷键提示 */}
