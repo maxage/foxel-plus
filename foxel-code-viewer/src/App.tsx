@@ -143,36 +143,54 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   // 渲染预览内容
   const renderPreviewContent = (code: string, language: string): string => {
     if (language === 'markdown') {
-      // 改进的 Markdown 渲染
-      return code
-        // 标题
+      // 更完整的 Markdown 渲染
+      let html = code
+        // 代码块（必须在其他规则之前处理）
+        .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        // 行内代码
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        // 标题（按顺序处理，从大到小）
+        .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+        .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
+        .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
         .replace(/^## (.*$)/gim, '<h2>$1</h2>')
         .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        // 代码块
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        // 行内代码
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // 水平线
+        .replace(/^---$/gm, '<hr>')
+        .replace(/^\*\*\*$/gm, '<hr>')
+        // 列表项
+        .replace(/^(\s*)[-*+] (.*$)/gim, '$1<li>$2</li>')
+        .replace(/^(\s*)(\d+)\. (.*$)/gim, '$1<li>$3</li>')
         // 粗体和斜体
+        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // 删除线
+        .replace(/~~(.*?)~~/g, '<del>$1</del>')
         // 链接
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         // 图片
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;">')
-        // 列表
-        .replace(/^\* (.*$)/gim, '<li>$1</li>')
-        .replace(/^- (.*$)/gim, '<li>$1</li>')
-        .replace(/^(\d+)\. (.*$)/gim, '<li>$2</li>')
-        // 换行
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/\n/g, '<br>')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 4px;">')
+        // 引用
+        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+        // 换行处理
+        .replace(/\n\n/g, '\n</p>\n<p>\n')
+        .replace(/\n/g, '<br>\n')
         // 包装段落
-        .replace(/^(?!<[h|p|u|o|l|i|d])/gm, '<p>')
+        .replace(/^(?!<[h|p|u|o|l|i|d|b|q|h])/gm, '<p>')
         .replace(/(?<!>)$/gm, '</p>')
-        // 清理空段落
+        // 包装列表
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+        // 清理空段落和多余的标签
         .replace(/<p><\/p>/g, '')
-        .replace(/<p><br><\/p>/g, '');
+        .replace(/<p><br><\/p>/g, '')
+        .replace(/<p>\s*<\/p>/g, '')
+        .replace(/<ul><li>/g, '<ul><li>')
+        .replace(/<\/li><\/ul>/g, '</li></ul>');
+
+      return html;
     } else if (language === 'html') {
       return code;
     } else if (language === 'xml' || language === 'svg') {
@@ -397,12 +415,55 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       setIsSaving(true);
       setSaveError('');
       
-      // 尝试使用 Foxel 的保存 API
+      // 尝试多种保存方式
+      let saved = false;
+      
+      // 方式1: 尝试使用 Foxel 的保存 API
       if (ctx.host && typeof ctx.host.saveFile === 'function') {
-        // 如果 Foxel 提供了保存 API
-        await ctx.host.saveFile(code);
-      } else {
-        // 如果没有保存 API，尝试通过下载方式提示用户
+        try {
+          await ctx.host.saveFile(code);
+          saved = true;
+        } catch (err) {
+          console.log('Foxel saveFile API 失败:', err);
+        }
+      }
+      
+      // 方式2: 尝试使用 Foxel 的文件上传 API
+      if (!saved && ctx.host && typeof ctx.host.uploadFile === 'function') {
+        try {
+          const blob = new Blob([code], { type: 'text/plain' });
+          await ctx.host.uploadFile(blob, ctx.entry.name);
+          saved = true;
+        } catch (err) {
+          console.log('Foxel uploadFile API 失败:', err);
+        }
+      }
+      
+      // 方式3: 尝试使用 Foxel 的适配器 API
+      if (!saved) {
+        try {
+          // 尝试通过 Foxel 的 API 保存文件
+          const response = await fetch('/api/files/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: ctx.entry.name,
+              content: code
+            })
+          });
+          
+          if (response.ok) {
+            saved = true;
+          }
+        } catch (err) {
+          console.log('Foxel API 保存失败:', err);
+        }
+      }
+      
+      // 方式4: 降级到下载方式
+      if (!saved) {
         const blob = new Blob([code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -415,17 +476,20 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         
         // 显示提示信息
         alert('由于 Foxel 暂不支持直接保存，已为您下载修改后的文件。请手动替换原文件。');
+        saved = true; // 标记为已保存，避免重复提示
       }
       
-      setIsModified(false);
+      if (saved) {
+        setIsModified(false);
+        setSaveSuccess(true);
+        
+        // 3秒后清除成功提示
+        setTimeout(() => setSaveSuccess(false), 3000);
+        
+        console.log('Code saved successfully');
+      }
+      
       setIsSaving(false);
-      setSaveSuccess(true);
-      
-      // 3秒后清除成功提示
-      setTimeout(() => setSaveSuccess(false), 3000);
-      
-      // 显示成功提示
-      console.log('Code saved successfully');
       
     } catch (error) {
       console.error('Save error:', error);
@@ -721,22 +785,130 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             style={{
               width: '100%',
               height: '100%',
+              minHeight: '600px',
               border: 'none',
               backgroundColor: '#fff',
-              borderRadius: '4px'
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
             }}
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            onLoad={(e) => {
+              // 尝试调整 iframe 高度
+              const iframe = e.target as HTMLIFrameElement;
+              try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc) {
+                  const height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+                  iframe.style.height = `${height + 20}px`;
+                }
+              } catch (err) {
+                console.log('无法调整 iframe 高度:', err);
+              }
+            }}
           />
         ) : (
-          <div
-            dangerouslySetInnerHTML={{ __html: previewContent }}
-            style={{
-              maxWidth: '100%',
-              wordWrap: 'break-word',
-              padding: '20px',
-              lineHeight: '1.6'
-            }}
-          />
+          <>
+            <style>
+              {`
+                .markdown-preview h1, .markdown-preview h2, .markdown-preview h3, 
+                .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 {
+                  margin-top: 1.5em;
+                  margin-bottom: 0.5em;
+                  font-weight: bold;
+                  color: ${currentTheme.foreground};
+                }
+                .markdown-preview h1 { font-size: 2em; border-bottom: 2px solid ${currentTheme.comment}; padding-bottom: 0.3em; }
+                .markdown-preview h2 { font-size: 1.5em; border-bottom: 1px solid ${currentTheme.comment}; padding-bottom: 0.3em; }
+                .markdown-preview h3 { font-size: 1.25em; }
+                .markdown-preview h4 { font-size: 1.1em; }
+                .markdown-preview h5 { font-size: 1em; }
+                .markdown-preview h6 { font-size: 0.9em; color: ${currentTheme.comment}; }
+                
+                .markdown-preview pre {
+                  background-color: ${currentTheme.background === '#1e1e1e' ? '#2d2d2d' : '#f5f5f5'};
+                  padding: 12px;
+                  border-radius: 4px;
+                  overflow: auto;
+                  margin: 1em 0;
+                  border: 1px solid ${currentTheme.comment};
+                }
+                
+                .markdown-preview code {
+                  background-color: ${currentTheme.background === '#1e1e1e' ? '#2d2d2d' : '#f5f5f5'};
+                  padding: 2px 4px;
+                  border-radius: 2px;
+                  font-family: Monaco, Consolas, "Courier New", monospace;
+                  color: ${currentTheme.foreground};
+                }
+                
+                .markdown-preview blockquote {
+                  border-left: 4px solid ${currentTheme.comment};
+                  padding-left: 16px;
+                  margin: 1em 0;
+                  font-style: italic;
+                  color: ${currentTheme.comment};
+                }
+                
+                .markdown-preview ul, .markdown-preview ol {
+                  padding-left: 2em;
+                  margin: 1em 0;
+                }
+                
+                .markdown-preview li {
+                  margin: 0.25em 0;
+                }
+                
+                .markdown-preview img {
+                  max-width: 100%;
+                  height: auto;
+                  border-radius: 4px;
+                  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                }
+                
+                .markdown-preview a {
+                  color: #007acc;
+                  text-decoration: none;
+                }
+                
+                .markdown-preview a:hover {
+                  text-decoration: underline;
+                }
+                
+                .markdown-preview hr {
+                  border: none;
+                  border-top: 1px solid ${currentTheme.comment};
+                  margin: 2em 0;
+                }
+                
+                .markdown-preview table {
+                  border-collapse: collapse;
+                  width: 100%;
+                  margin: 1em 0;
+                }
+                
+                .markdown-preview th, .markdown-preview td {
+                  border: 1px solid ${currentTheme.comment};
+                  padding: 8px 12px;
+                  text-align: left;
+                }
+                
+                .markdown-preview th {
+                  background-color: ${currentTheme.background === '#1e1e1e' ? '#2d2d2d' : '#f5f5f5'};
+                  font-weight: bold;
+                }
+              `}
+            </style>
+            <div
+              className="markdown-preview"
+              dangerouslySetInnerHTML={{ __html: previewContent }}
+              style={{
+                maxWidth: '100%',
+                wordWrap: 'break-word',
+                padding: '20px',
+                lineHeight: '1.6'
+              }}
+            />
+          </>
         )}
       </div>
     );
