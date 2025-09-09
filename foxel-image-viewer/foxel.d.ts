@@ -33,6 +33,8 @@ export interface PluginMountCtx {
   };
   host: {
     close: () => void;
+    saveFile?: (content: string) => Promise<void>;
+    uploadFile?: (blob: Blob, filename: string) => Promise<void>;
   };
 }
 
