@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foxel API 调试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: #333;
+            color: #fff;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success { background-color: #2e7d32; }
+        .error { background-color: #d32f2f; }
+        .warning { background-color: #f57c00; }
+        .info { background-color: #1976d2; }
+        .log {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        .api-endpoint {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .response {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007acc;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Foxel API 调试工具</h1>
+        <p>使用 Foxel API 进行插件调试和测试</p>
+
+        <div class="grid">
+            <!-- 连接配置 -->
+            <div class="section">
+                <h2>🔌 连接配置</h2>
+                <div class="form-group">
+                    <label for="apiBaseUrl">API 基础 URL:</label>
+                    <input type="text" id="apiBaseUrl" value="http://10.0.0.8:3737" placeholder="http://10.0.0.8:3737">
+                </div>
+                <div class="form-group">
+                    <label for="username">用户名:</label>
+                    <input type="text" id="username" placeholder="输入用户名">
+                </div>
+                <div class="form-group">
+                    <label for="password">密码:</label>
+                    <input type="password" id="password" placeholder="输入密码">
+                </div>
+                <button onclick="connectToAPI()">连接</button>
+                <button onclick="disconnect()">断开连接</button>
+                <div id="connection-status" class="status"></div>
+            </div>
+
+            <!-- API 测试 -->
+            <div class="section">
+                <h2>🧪 API 测试</h2>
+                <div class="form-group">
+                    <label for="endpoint">API 端点:</label>
+                    <select id="endpoint" onchange="updateEndpointInfo()">
+                        <option value="/api/auth/login">POST /api/auth/login - 用户登录</option>
+                        <option value="/api/auth/logout">POST /api/auth/logout - 用户登出</option>
+                        <option value="/api/plugins">GET /api/plugins - 获取插件列表</option>
+                        <option value="/api/plugins/load">POST /api/plugins/load - 加载插件</option>
+                        <option value="/api/plugins/unload">POST /api/plugins/unload - 卸载插件</option>
+                        <option value="/api/plugins/status">GET /api/plugins/status - 插件状态</option>
+                        <option value="/api/system/info">GET /api/system/info - 系统信息</option>
+                        <option value="/api/system/health">GET /api/system/health - 健康检查</option>
+                        <option value="custom">自定义端点</option>
+                    </select>
+                </div>
+                <div class="form-group" id="customEndpointGroup" style="display: none;">
+                    <label for="customEndpoint">自定义端点:</label>
+                    <input type="text" id="customEndpoint" placeholder="/api/custom/endpoint">
+                </div>
+                <div class="form-group">
+                    <label for="httpMethod">HTTP 方法:</label>
+                    <select id="httpMethod">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="requestBody">请求体 (JSON):</label>
+                    <textarea id="requestBody" rows="4" placeholder='{"key": "value"}'></textarea>
+                </div>
+                <button onclick="testAPI()">测试 API</button>
+                <button onclick="clearLogs()">清空日志</button>
+            </div>
+        </div>
+
+        <!-- 插件管理 -->
+        <div class="section">
+            <h2>🔌 插件管理</h2>
+            <div class="grid">
+                <div>
+                    <h3>加载插件</h3>
+                    <div class="form-group">
+                        <label for="pluginUrl">插件 URL:</label>
+                        <input type="text" id="pluginUrl" value="https://github.com/maxage/foxel-plus/raw/main/foxel-image-viewer.js" placeholder="插件文件 URL">
+                    </div>
+                    <div class="form-group">
+                        <label for="pluginName">插件名称:</label>
+                        <input type="text" id="pluginName" value="foxel-image-viewer" placeholder="插件名称">
+                    </div>
+                    <button onclick="loadPlugin()">加载插件</button>
+                </div>
+                <div>
+                    <h3>插件操作</h3>
+                    <button onclick="listPlugins()">获取插件列表</button>
+                    <button onclick="getPluginStatus()">获取插件状态</button>
+                    <button onclick="unloadAllPlugins()">卸载所有插件</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 响应显示 -->
+        <div class="section">
+            <h2>📊 响应信息</h2>
+            <div id="api-response" class="response" style="display: none;">
+                <h4>API 响应:</h4>
+                <pre id="response-content"></pre>
+            </div>
+            <div id="api-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let apiBaseUrl = 'http://10.0.0.8:3737';
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('api-log');
+            const logMessage = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logElement.textContent += logMessage;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+        }
+
+        function setStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        function showResponse(data) {
+            const responseElement = document.getElementById('api-response');
+            const contentElement = document.getElementById('response-content');
+            contentElement.textContent = JSON.stringify(data, null, 2);
+            responseElement.style.display = 'block';
+        }
+
+        function updateEndpointInfo() {
+            const endpoint = document.getElementById('endpoint').value;
+            const customGroup = document.getElementById('customEndpointGroup');
+            if (endpoint === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+        }
+
+        async function connectToAPI() {
+            const baseUrl = document.getElementById('apiBaseUrl').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!baseUrl || !username || !password) {
+                setStatus('connection-status', '请填写所有必填字段', 'error');
+                return;
+            }
+
+            apiBaseUrl = baseUrl;
+            log(`尝试连接到 ${apiBaseUrl}...`);
+
+            try {
+                // 首先尝试健康检查
+                const healthResponse = await fetch(`${apiBaseUrl}/api/system/health`);
+                if (!healthResponse.ok) {
+                    throw new Error(`健康检查失败: ${healthResponse.status}`);
+                }
+                log('健康检查通过', 'success');
+
+                // 尝试登录
+                const loginResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!loginResponse.ok) {
+                    throw new Error(`登录失败: ${loginResponse.status} ${loginResponse.statusText}`);
+                }
+
+                const loginData = await loginResponse.json();
+                authToken = loginData.token || loginData.access_token;
+                
+                setStatus('connection-status', '连接成功！', 'success');
+                log('API 连接成功，已获取认证令牌', 'success');
+                showResponse(loginData);
+
+            } catch (error) {
+                setStatus('connection-status', `连接失败: ${error.message}`, 'error');
+                log(`连接失败: ${error.message}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            authToken = null;
+            setStatus('connection-status', '已断开连接', 'info');
+            log('已断开与 API 的连接');
+        }
+
+        async function testAPI() {
+            if (!apiBaseUrl) {
+                log('请先配置 API 基础 URL', 'error');
+                return;
+            }
+
+            const endpoint = document.getElementById('endpoint').value;
+            const customEndpoint = document.getElementById('customEndpoint').value;
+            const method = document.getElementById('httpMethod').value;
+            const body = document.getElementById('requestBody').value;
+
+            let actualEndpoint = endpoint === 'custom' ? customEndpoint : endpoint;
+            if (!actualEndpoint.startsWith('/')) {
+                actualEndpoint = '/' + actualEndpoint;
+            }
+
+            const url = `${apiBaseUrl}${actualEndpoint}`;
+            log(`测试 API: ${method} ${url}`);
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+
+                const requestOptions = {
+                    method: method,
+                    headers: headers,
+                };
+
+                if (body && (method === 'POST' || method === 'PUT')) {
+                    try {
+                        requestOptions.body = JSON.stringify(JSON.parse(body));
+                    } catch (e) {
+                        throw new Error('请求体不是有效的 JSON 格式');
+                    }
+                }
+
+                const response = await fetch(url, requestOptions);
+                const responseData = await response.text();
+
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(responseData);
+                } catch (e) {
+                    parsedData = responseData;
+                }
+
+                if (response.ok) {
+                    log(`API 调用成功: ${response.status}`, 'success');
+                } else {
+                    log(`API 调用失败: ${response.status} ${response.statusText}`, 'error');
+                }
+
+                showResponse({
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: parsedData
+                });
+
+            } catch (error) {
+                log(`API 调用错误: ${error.message}`, 'error');
+                showResponse({ error: error.message });
+            }
+        }
+
+        async function loadPlugin() {
+            if (!authToken) {
+                log('请先连接 API', 'error');
+                return;
+            }
+
+            const pluginUrl = document.getElementById('pluginUrl').value;
+            const pluginName = document.getElementById('pluginName').value;
+
+            if (!pluginUrl || !pluginName) {
+                log('请填写插件 URL 和名称', 'error');
+                return;
+            }
+
+            log(`加载插件: ${pluginName} from ${pluginUrl}`);
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/plugins/load`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        url: pluginUrl,
+                        name: pluginName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`插件加载成功: ${pluginName}`, 'success');
+                } else {
+                    log(`插件加载失败: ${data.message || response.statusText}`, 'error');
+                }
+
+                showResponse(data);
+
+            } catch (error) {
+                log(`插件加载错误: ${error.message}`, 'error');
+                showResponse({ error: error.message });
+            }
+        }
+
+        async function listPlugins() {
+            if (!authToken) {
+                log('请先连接 API', 'error');
+                return;
+            }
+
+            log('获取插件列表...');
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/plugins`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`获取到 ${data.length || 0} 个插件`, 'success');
+                } else {
+                    log(`获取插件列表失败: ${data.message || response.statusText}`, 'error');
+                }
+
+                showResponse(data);
+
+            } catch (error) {
+                log(`获取插件列表错误: ${error.message}`, 'error');
+                showResponse({ error: error.message });
+            }
+        }
+
+        async function getPluginStatus() {
+            if (!authToken) {
+                log('请先连接 API', 'error');
+                return;
+            }
+
+            log('获取插件状态...');
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/plugins/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('插件状态获取成功', 'success');
+                } else {
+                    log(`获取插件状态失败: ${data.message || response.statusText}`, 'error');
+                }
+
+                showResponse(data);
+
+            } catch (error) {
+                log(`获取插件状态错误: ${error.message}`, 'error');
+                showResponse({ error: error.message });
+            }
+        }
+
+        async function unloadAllPlugins() {
+            if (!authToken) {
+                log('请先连接 API', 'error');
+                return;
+            }
+
+            if (!confirm('确定要卸载所有插件吗？')) {
+                return;
+            }
+
+            log('卸载所有插件...');
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/plugins/unload`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ all: true })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('所有插件已卸载', 'success');
+                } else {
+                    log(`卸载插件失败: ${data.message || response.statusText}`, 'error');
+                }
+
+                showResponse(data);
+
+            } catch (error) {
+                log(`卸载插件错误: ${error.message}`, 'error');
+                showResponse({ error: error.message });
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('api-log').textContent = '';
+            document.getElementById('api-response').style.display = 'none';
+        }
+
+        // 页面加载完成后的初始化
+        window.addEventListener('load', function() {
+            log('Foxel API 调试工具已加载');
+            log('请先配置连接信息并点击"连接"按钮');
+        });
+    </script>
+</body>
+</html>
