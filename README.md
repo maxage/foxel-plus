@@ -1,13 +1,12 @@
 # Foxel Plus 🦊
 
 [![CI](https://github.com/maxage/foxel-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/maxage/foxel-plus/actions/workflows/ci.yml)
-[![Build Plugins](https://github.com/maxage/foxel-plus/actions/workflows/build-plugins.yml/badge.svg)](https://github.com/maxage/foxel-plus/actions/workflows/build-plugins.yml)
-[![Simple Build](https://github.com/maxage/foxel-plus/actions/workflows/simple-build.yml/badge.svg)](https://github.com/maxage/foxel-plus/actions/workflows/simple-build.yml)
+[![Auto Release](https://github.com/maxage/foxel-plus/actions/workflows/auto-release.yml/badge.svg)](https://github.com/maxage/foxel-plus/actions/workflows/auto-release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3+-61dafb.svg)](https://react.dev/)
 
-> 🚀 为 [Foxel](https://foxel.cc) 私有云存储系统开发的插件集合，提供丰富的文件查看和处理功能。基于 TypeScript + React + ESBuild 构建，完全自包含，即插即用。
+> 🚀 为 [Foxel](https://foxel.cc) 私有云存储系统开发的多插件仓库，提供丰富的文件查看和处理功能。基于 TypeScript + React + ESBuild 构建，完全自包含，即插即用。
 
 ## ✨ 特性
 
@@ -31,6 +30,12 @@
 3. 在 Foxel 的"应用"页面添加插件
 4. 输入插件 URL: `https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js`
 5. 安装完成后即可在文件管理器中查看图片
+
+### 📦 可用插件
+
+| 插件名称 | 描述 | 作者 | 下载链接 |
+|---------|------|------|----------|
+| **foxel-image-viewer** | 功能丰富的图片查看器，支持缩放、拖拽、旋转等操作 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js) |
 
 #### 方法二：从源码构建
 
@@ -407,18 +412,18 @@ graph LR
 
 ### 🚀 自动触发条件
 
-- **插件文件修改** - 当 `foxel-image-viewer/` 目录下的文件发生变更时
-- **根目录插件文件修改** - 当 `foxel-image-viewer.js` 文件发生变更时
+- **插件文件修改** - 当任何 `foxel-*/` 目录下的文件发生变更时
+- **根目录插件文件修改** - 当任何 `foxel-*.js` 文件发生变更时
 - **推送到 main 分支** - 确保只在主分支上触发
 
 ### 📦 发布流程
 
-1. **自动检测** - 检测到插件文件变更
-2. **构建插件** - 使用 ESBuild 构建最新版本
-3. **版本管理** - 从 `package.json` 读取版本号
+1. **自动检测** - 检测到插件文件变更，识别所有修改的插件
+2. **构建插件** - 使用 ESBuild 构建所有修改的插件
+3. **版本管理** - 从第一个修改插件的 `package.json` 读取版本号
 4. **创建标签** - 自动创建 Git 标签
-5. **发布 Release** - 在 GitHub 上创建 Release
-6. **更新文件** - 更新根目录的插件文件
+5. **发布 Release** - 在 GitHub 上创建 Release，包含所有插件文件
+6. **更新文件** - 更新根目录对应的插件文件
 
 ### 🛠️ 手动操作
 

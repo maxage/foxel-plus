@@ -10,7 +10,7 @@ const plugin: RegisteredPlugin = {
   name: '图片查看器',
   version: '1.0.0',
   description: '一个功能丰富的图片查看器插件，支持缩放、拖拽、旋转等操作',
-  author: 'Foxel Plus Team',
+  author: 'Foxel Plus Team @ maxage',
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',
   supportedExts: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tiff', 'tif'],

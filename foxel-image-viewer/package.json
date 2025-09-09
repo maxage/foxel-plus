@@ -11,7 +11,7 @@
     "prebuild": "npm run validate"
   },
   "keywords": ["foxel", "plugin", "image", "viewer"],
-  "author": "Foxel Plus Team",
+  "author": "Foxel Plus Team @ maxage",
   "license": "MIT",
   "devDependencies": {
     "@types/react": "^18.2.79",
