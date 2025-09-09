@@ -123,6 +123,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const [isModified, setIsModified] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>('');
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [fileInfo, setFileInfo] = useState<{
     name: string;
     size: number;
@@ -136,27 +137,43 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   // 检测是否支持预览模式
   const isPreviewable = (language: string): boolean => {
-    return ['markdown', 'html', 'htm', 'xml', 'svg'].includes(language);
+    return ['markdown', 'html', 'xml', 'svg'].includes(language);
   };
 
   // 渲染预览内容
   const renderPreviewContent = (code: string, language: string): string => {
     if (language === 'markdown') {
-      // 简单的 Markdown 渲染
+      // 改进的 Markdown 渲染
       return code
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        // 标题
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-        .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
-        .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        // 代码块
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        // 行内代码
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // 粗体和斜体
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-        .replace(/\n/g, '<br>');
-    } else if (language === 'html' || language === 'htm') {
+        // 链接
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        // 图片
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;">')
+        // 列表
+        .replace(/^\* (.*$)/gim, '<li>$1</li>')
+        .replace(/^- (.*$)/gim, '<li>$1</li>')
+        .replace(/^(\d+)\. (.*$)/gim, '<li>$2</li>')
+        // 换行
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>')
+        // 包装段落
+        .replace(/^(?!<[h|p|u|o|l|i|d])/gm, '<p>')
+        .replace(/(?<!>)$/gm, '</p>')
+        // 清理空段落
+        .replace(/<p><\/p>/g, '')
+        .replace(/<p><br><\/p>/g, '');
+    } else if (language === 'html') {
       return code;
     } else if (language === 'xml' || language === 'svg') {
       return code;
@@ -380,22 +397,43 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       setIsSaving(true);
       setSaveError('');
       
-      // 这里应该调用 Foxel 的保存 API
-      // 由于我们不知道具体的保存 API，这里先模拟保存
-      console.log('Saving code:', code);
-      
-      // 模拟保存延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 尝试使用 Foxel 的保存 API
+      if (ctx.host && typeof ctx.host.saveFile === 'function') {
+        // 如果 Foxel 提供了保存 API
+        await ctx.host.saveFile(code);
+      } else {
+        // 如果没有保存 API，尝试通过下载方式提示用户
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ctx.entry.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // 显示提示信息
+        alert('由于 Foxel 暂不支持直接保存，已为您下载修改后的文件。请手动替换原文件。');
+      }
       
       setIsModified(false);
       setIsSaving(false);
+      setSaveSuccess(true);
       
-      // 可以添加成功提示
+      // 3秒后清除成功提示
+      setTimeout(() => setSaveSuccess(false), 3000);
+      
+      // 显示成功提示
       console.log('Code saved successfully');
       
     } catch (error) {
+      console.error('Save error:', error);
       setSaveError(error instanceof Error ? error.message : '保存失败');
       setIsSaving(false);
+      
+      // 3秒后清除错误信息
+      setTimeout(() => setSaveError(''), 3000);
     }
   };
 
@@ -677,22 +715,26 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           lineHeight: '1.6'
         }}
       >
-        {fileInfo.language === 'html' || fileInfo.language === 'htm' ? (
+        {fileInfo.language === 'html' ? (
           <iframe
             srcDoc={previewContent}
             style={{
               width: '100%',
               height: '100%',
               border: 'none',
-              backgroundColor: '#fff'
+              backgroundColor: '#fff',
+              borderRadius: '4px'
             }}
+            sandbox="allow-scripts allow-same-origin"
           />
         ) : (
           <div
             dangerouslySetInnerHTML={{ __html: previewContent }}
             style={{
               maxWidth: '100%',
-              wordWrap: 'break-word'
+              wordWrap: 'break-word',
+              padding: '20px',
+              lineHeight: '1.6'
             }}
           />
         )}
@@ -1279,7 +1321,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         )}
       </div>
 
-      {/* 保存错误提示 */}
+      {/* 保存状态提示 */}
       {saveError && (
         <div style={{
           position: 'absolute',
@@ -1295,6 +1337,24 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
         }}>
           ❌ {saveError}
+        </div>
+      )}
+
+      {saveSuccess && (
+        <div style={{
+          position: 'absolute',
+          top: showToolbar ? (isFullscreen ? '80px' : '60px') : '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#28a745',
+          color: '#fff',
+          padding: '8px 16px',
+          borderRadius: '4px',
+          fontSize: '14px',
+          zIndex: 20,
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+        }}>
+          ✅ 保存成功
         </div>
       )}
 
