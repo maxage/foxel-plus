@@ -268,9 +268,9 @@
                 const loginResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: JSON.stringify({ username, password })
+                    body: `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
                 });
 
                 if (!loginResponse.ok) {
@@ -278,7 +278,7 @@
                 }
 
                 const loginData = await loginResponse.json();
-                authToken = loginData.token || loginData.access_token;
+                authToken = loginData.access_token;
                 
                 setStatus('connection-status', '连接成功！', 'success');
                 log('API 连接成功，已获取认证令牌', 'success');
@@ -380,10 +380,10 @@
                 return;
             }
 
-            log(`加载插件: ${pluginName} from ${pluginUrl}`);
+            log(`创建插件: ${pluginName} from ${pluginUrl}`);
 
             try {
-                const response = await fetch(`${apiBaseUrl}/api/plugins/load`, {
+                const response = await fetch(`${apiBaseUrl}/api/plugins`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -391,22 +391,23 @@
                     },
                     body: JSON.stringify({
                         url: pluginUrl,
-                        name: pluginName
+                        enabled: true
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    log(`插件加载成功: ${pluginName}`, 'success');
+                    log(`插件创建成功: ${data.name || pluginName}`, 'success');
+                    log(`插件 ID: ${data.id}`, 'info');
                 } else {
-                    log(`插件加载失败: ${data.message || response.statusText}`, 'error');
+                    log(`插件创建失败: ${data.detail || response.statusText}`, 'error');
                 }
 
                 showResponse(data);
 
             } catch (error) {
-                log(`插件加载错误: ${error.message}`, 'error');
+                log(`插件创建错误: ${error.message}`, 'error');
                 showResponse({ error: error.message });
             }
         }

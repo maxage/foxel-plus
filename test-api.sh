@@ -79,17 +79,17 @@ login() {
     print_info "尝试登录..."
     
     local response=$(curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=password&username=$(echo -n "$USERNAME" | sed 's/+/%2B/g; s/ /%20/g; s/!/%21/g; s/"/%22/g; s/#/%23/g; s/\$/%24/g; s/&/%26/g; s/'\''/%27/g; s/(/%28/g; s/)/%29/g; s/\*/%2A/g; s/+/%2B/g; s/,/%2C/g; s/-/%2D/g; s/\./%2E/g; s/\//%2F/g; s/:/%3A/g; s/;/%3B/g; s/</%3C/g; s/=/%3D/g; s/>/%3E/g; s/?/%3F/g; s/@/%40/g; s/\[/%5B/g; s/\\/%5C/g; s/\]/%5D/g; s/\^/%5E/g; s/_/%5F/g; s/`/%60/g; s/{/%7B/g; s/|/%7C/g; s/}/%7D/g; s/~/%7E/g')&password=$(echo -n "$PASSWORD" | sed 's/+/%2B/g; s/ /%20/g; s/!/%21/g; s/"/%22/g; s/#/%23/g; s/\$/%24/g; s/&/%26/g; s/'\''/%27/g; s/(/%28/g; s/)/%29/g; s/\*/%2A/g; s/+/%2B/g; s/,/%2C/g; s/-/%2D/g; s/\./%2E/g; s/\//%2F/g; s/:/%3A/g; s/;/%3B/g; s/</%3C/g; s/=/%3D/g; s/>/%3E/g; s/?/%3F/g; s/@/%40/g; s/\[/%5B/g; s/\\/%5C/g; s/\]/%5D/g; s/\^/%5E/g; s/_/%5F/g; s/`/%60/g; s/{/%7B/g; s/|/%7C/g; s/}/%7D/g; s/~/%7E/g')" \
         "$API_BASE_URL/api/auth/login" 2>/dev/null)
     
     if echo "$response" | grep -q "token\|access_token"; then
         print_success "登录成功"
         # 提取 token
         if command -v jq &> /dev/null; then
-            AUTH_TOKEN=$(echo "$response" | jq -r '.token // .access_token // empty')
+            AUTH_TOKEN=$(echo "$response" | jq -r '.access_token // empty')
         else
-            AUTH_TOKEN=$(echo "$response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+            AUTH_TOKEN=$(echo "$response" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
         fi
         return 0
     else
@@ -141,23 +141,23 @@ list_plugins() {
 
 # 加载插件
 load_plugin() {
-    print_info "加载插件: $PLUGIN_NAME"
+    print_info "创建插件: $PLUGIN_NAME"
     
     local response=$(curl -s -X POST \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $AUTH_TOKEN" \
-        -d "{\"url\":\"$PLUGIN_URL\",\"name\":\"$PLUGIN_NAME\"}" \
-        "$API_BASE_URL/api/plugins/load" 2>/dev/null)
+        -d "{\"url\":\"$PLUGIN_URL\",\"enabled\":true}" \
+        "$API_BASE_URL/api/plugins" 2>/dev/null)
     
     if [ $? -eq 0 ]; then
-        print_success "插件加载请求已发送"
+        print_success "插件创建请求已发送"
         if command -v jq &> /dev/null; then
             echo "$response" | jq .
         else
             echo "$response"
         fi
     else
-        print_error "插件加载失败"
+        print_error "插件创建失败"
     fi
 }
 

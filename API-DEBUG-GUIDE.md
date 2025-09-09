@@ -92,9 +92,10 @@
 
 ### 插件管理
 - `GET /api/plugins` - 获取插件列表
-- `POST /api/plugins/load` - 加载插件
-- `POST /api/plugins/unload` - 卸载插件
-- `GET /api/plugins/status` - 获取插件状态
+- `POST /api/plugins` - 创建插件
+- `PUT /api/plugins/{plugin_id}` - 更新插件
+- `DELETE /api/plugins/{plugin_id}` - 删除插件
+- `POST /api/plugins/{plugin_id}/metadata` - 更新插件元数据
 
 ## 📝 使用示例
 
@@ -108,17 +109,17 @@ curl -X GET http://10.0.0.8:3737/api/system/health
 
 ```bash
 curl -X POST http://10.0.0.8:3737/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"your_username","password":"your_password"}'
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'grant_type=password&username=your_username&password=your_password'
 ```
 
-### 3. 加载插件
+### 3. 创建插件
 
 ```bash
-curl -X POST http://10.0.0.8:3737/api/plugins/load \
+curl -X POST http://10.0.0.8:3737/api/plugins \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"url":"https://github.com/maxage/foxel-plus/raw/main/foxel-image-viewer.js","name":"foxel-image-viewer"}'
+  -d '{"url":"https://github.com/maxage/foxel-plus/raw/main/foxel-image-viewer.js","enabled":true}'
 ```
 
 ### 4. 获取插件列表

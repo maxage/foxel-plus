@@ -92,11 +92,14 @@ class FoxelAPITester {
         try {
             const response = await this.makeRequest('/api/auth/login', {
                 method: 'POST',
-                body: { username, password }
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
             });
 
             if (response.status === 200) {
-                this.authToken = response.data.token || response.data.access_token;
+                this.authToken = response.data.access_token;
                 console.log('✅ 登录成功');
                 return true;
             } else {
@@ -151,27 +154,29 @@ class FoxelAPITester {
     }
 
     async loadPlugin(pluginUrl, pluginName) {
-        console.log(`🔌 加载插件: ${pluginName} from ${pluginUrl}`);
+        console.log(`🔌 创建插件: ${pluginName} from ${pluginUrl}`);
         try {
-            const response = await this.makeRequest('/api/plugins/load', {
+            const response = await this.makeRequest('/api/plugins', {
                 method: 'POST',
                 body: {
                     url: pluginUrl,
-                    name: pluginName
+                    enabled: true
                 }
             });
 
             if (response.status === 200 || response.status === 201) {
-                console.log('✅ 插件加载成功');
+                console.log('✅ 插件创建成功');
+                console.log(`插件 ID: ${response.data.id}`);
+                console.log(`插件名称: ${response.data.name}`);
                 console.log('响应:', JSON.stringify(response.data, null, 2));
                 return true;
             } else {
-                console.log(`❌ 插件加载失败: ${response.status} ${response.statusText}`);
+                console.log(`❌ 插件创建失败: ${response.status} ${response.statusText}`);
                 console.log('响应:', JSON.stringify(response.data, null, 2));
                 return false;
             }
         } catch (error) {
-            console.log(`❌ 插件加载错误: ${error.message}`);
+            console.log(`❌ 插件创建错误: ${error.message}`);
             return false;
         }
     }
