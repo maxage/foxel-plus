@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PluginMountCtx } from '../foxel.d';
 
+// 声明全局 vfsApi 类型
+declare global {
+  interface Window {
+    vfsApi?: {
+      uploadFile: (filePath: string, blob: Blob) => Promise<void>;
+    };
+  }
+}
+
 interface AppProps {
   ctx: PluginMountCtx;
 }
@@ -334,6 +343,16 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         language
       });
       
+      // 调试：显示可用的 API
+      console.log('Foxel API 调试信息:');
+      console.log('- window.vfsApi:', window.vfsApi);
+      console.log('- ctx.host:', ctx.host);
+      console.log('- 可用的保存方法:', {
+        vfsApiUploadFile: !!(window.vfsApi && typeof window.vfsApi.uploadFile === 'function'),
+        hostSaveFile: !!(ctx.host && typeof ctx.host.saveFile === 'function'),
+        hostUploadFile: !!(ctx.host && typeof ctx.host.uploadFile === 'function')
+      });
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载文件失败');
     } finally {
@@ -418,28 +437,42 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       // 尝试多种保存方式
       let saved = false;
       
-      // 方式1: 尝试使用 Foxel 的保存 API
-      if (ctx.host && typeof ctx.host.saveFile === 'function') {
+      // 方式1: 尝试使用 Foxel 的 vfsApi.uploadFile API
+      if (window.vfsApi && typeof window.vfsApi.uploadFile === 'function') {
         try {
-          await ctx.host.saveFile(code);
+          const blob = new Blob([code], { type: 'text/plain' });
+          await window.vfsApi.uploadFile(ctx.entry.name, blob);
           saved = true;
+          console.log('使用 vfsApi.uploadFile 保存成功');
         } catch (err) {
-          console.log('Foxel saveFile API 失败:', err);
+          console.log('vfsApi.uploadFile 失败:', err);
         }
       }
       
-      // 方式2: 尝试使用 Foxel 的文件上传 API
+      // 方式2: 尝试使用 Foxel 的保存 API
+      if (!saved && ctx.host && typeof ctx.host.saveFile === 'function') {
+        try {
+          await ctx.host.saveFile(code);
+          saved = true;
+          console.log('使用 ctx.host.saveFile 保存成功');
+        } catch (err) {
+          console.log('ctx.host.saveFile 失败:', err);
+        }
+      }
+      
+      // 方式3: 尝试使用 Foxel 的文件上传 API
       if (!saved && ctx.host && typeof ctx.host.uploadFile === 'function') {
         try {
           const blob = new Blob([code], { type: 'text/plain' });
           await ctx.host.uploadFile(blob, ctx.entry.name);
           saved = true;
+          console.log('使用 ctx.host.uploadFile 保存成功');
         } catch (err) {
-          console.log('Foxel uploadFile API 失败:', err);
+          console.log('ctx.host.uploadFile 失败:', err);
         }
       }
       
-      // 方式3: 尝试使用 Foxel 的适配器 API
+      // 方式4: 尝试使用 Foxel 的适配器 API
       if (!saved) {
         try {
           // 尝试通过 Foxel 的 API 保存文件
@@ -456,13 +489,14 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           
           if (response.ok) {
             saved = true;
+            console.log('使用 /api/files/save 保存成功');
           }
         } catch (err) {
-          console.log('Foxel API 保存失败:', err);
+          console.log('/api/files/save 失败:', err);
         }
       }
       
-      // 方式4: 降级到下载方式
+      // 方式5: 降级到下载方式
       if (!saved) {
         const blob = new Blob([code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -477,6 +511,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         // 显示提示信息
         alert('由于 Foxel 暂不支持直接保存，已为您下载修改后的文件。请手动替换原文件。');
         saved = true; // 标记为已保存，避免重复提示
+        console.log('降级到下载方式');
       }
       
       if (saved) {
