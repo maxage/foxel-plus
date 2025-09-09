@@ -55,29 +55,40 @@ jobs:
           fi
         done
         
-    - name: Build plugin
+    - name: Build all plugins
       run: |
-        cd foxel-image-viewer
-        npm ci
-        npm run build
+        echo "🔨 Building all plugins..."
+        
+        # 构建所有插件
+        for plugin_dir in foxel-*/; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/package.json" ]; then
+            echo "📦 Building plugin: $plugin_dir"
+            cd "$plugin_dir"
+            npm ci
+            npm run build
+            cd ..
+            echo "✅ Plugin $plugin_dir built successfully"
+          fi
+        done
         
     - name: Prepare release files
       run: |
         mkdir -p release
-        cp foxel-image-viewer/dist/plugin.js release/foxel-image-viewer.js
         
-        # 获取实际版本号和文件大小
+        # 复制所有插件的构建文件
+        for plugin_dir in foxel-*/; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/dist/plugin.js" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            echo "📁 Copying $plugin_name/dist/plugin.js to release/"
+            cp "$plugin_dir/dist/plugin.js" "release/$plugin_name.js"
+          fi
+        done
+        
+        # 获取实际版本号
         VERSION="${{ inputs.version }}"
         if [[ $VERSION == v* ]]; then
           VERSION=${VERSION#v}
         fi
-        
-        FILE_SIZE=$(du -h release/foxel-image-viewer.js | cut -f1)
-        
-        # 获取插件信息
-        PLUGIN_NAME=$(cd foxel-image-viewer && node -p "require('./package.json').name")
-        PLUGIN_DESCRIPTION=$(cd foxel-image-viewer && node -p "require('./package.json').description")
-        PLUGIN_AUTHOR=$(cd foxel-image-viewer && node -p "require('./package.json').author")
         
         # Create release notes
         cat > release/RELEASE_NOTES.md << EOF
@@ -85,15 +96,21 @@ jobs:
         
         ## 📦 包含的插件
         
-        ### 🖼️ $PLUGIN_NAME (v$VERSION)
+        EOF
         
-        **描述**: $PLUGIN_DESCRIPTION  
-        **作者**: $PLUGIN_AUTHOR  
-        **文件大小**: $FILE_SIZE  
-        **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF
-        
-        #### 主要功能
-        - 🔍 智能缩放（10%-500%）
+        # Add plugin information dynamically
+        for plugin_dir in foxel-*/; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/package.json" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            PLUGIN_NAME=$(node -p "require('./$plugin_dir/package.json').name")
+            PLUGIN_DESCRIPTION=$(node -p "require('./$plugin_dir/package.json').description")
+            PLUGIN_AUTHOR=$(node -p "require('./$plugin_dir/package.json').author")
+            FILE_SIZE=$(du -h "release/$plugin_name.js" | cut -f1)
+            
+            # 根据插件类型添加不同的功能描述
+            if [[ "$plugin_name" == *"image"* ]]; then
+              PLUGIN_ICON="🖼️"
+              PLUGIN_FEATURES="- 🔍 智能缩放（10%-500%）
         - 🖱️ 拖拽移动
         - 🔄 旋转和翻转
         - ⤢ 全屏模式
@@ -101,10 +118,42 @@ jobs:
         - ⌨️ 键盘快捷键支持
         - 🎛️ 智能工具栏
         - 🌙 深色主题
-        - 📱 响应式设计
+        - 📱 响应式设计"
+              SUPPORTED_FORMATS="JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF"
+            elif [[ "$plugin_name" == *"code"* ]]; then
+              PLUGIN_ICON="💻"
+              PLUGIN_FEATURES="- 🎨 语法高亮（50+ 语言）
+        - 🌈 5 种主题切换
+        - 🔍 实时搜索功能
+        - 📝 代码折叠和行号
+        - ⚙️ 字体大小调节
+        - 📋 复制和下载功能
+        - ⌨️ 完整键盘快捷键
+        - 🎛️ 智能工具栏
+        - 📱 响应式设计"
+              SUPPORTED_FORMATS="JS/TS, HTML/CSS, Python, Java, C/C++, Go, Rust, 等 50+ 格式"
+            else
+              PLUGIN_ICON="🔌"
+              PLUGIN_FEATURES="- 🎯 即插即用
+        - 🔧 完全自包含
+        - 🎨 现代化 UI
+        - 📱 响应式设计"
+              SUPPORTED_FORMATS="多种文件格式"
+            fi
+            
+            cat >> release/RELEASE_NOTES.md << EOF
+        ### $PLUGIN_ICON $PLUGIN_NAME (v$VERSION)
+        
+        **描述**: $PLUGIN_DESCRIPTION  
+        **作者**: $PLUGIN_AUTHOR  
+        **文件大小**: $FILE_SIZE  
+        **支持格式**: $SUPPORTED_FORMATS
+        
+        #### 主要功能
+        $PLUGIN_FEATURES
         
         #### 安装方法
-        1. 下载 \`foxel-image-viewer.js\` 文件
+        1. 下载 \`$plugin_name.js\` 文件
         2. 将文件复制到 Foxel 的 \`web/public/plugins/\` 目录
         3. 在 Foxel 的"应用"页面安装插件
         4. 选择对应文件类型即可使用
@@ -116,12 +165,40 @@ jobs:
         - **高性能** - ESBuild 优化构建
         - **即插即用** - 符合 Foxel 插件规范
         
-        #### 更新日志
+        EOF
+          fi
+        done
+        
+        # Add common sections
+        cat >> release/RELEASE_NOTES.md << EOF
+        
+        ## 🚀 安装方法
+        
+        1. 下载所需的插件文件
+        2. 在 Foxel 的"应用"页面添加插件
+        3. 输入对应的插件 URL
+        4. 安装完成后即可使用
+        
+        ## 🔧 技术特性
+        
+        - **完全自包含** - 单文件输出，无外部依赖
+        - **类型安全** - 基于 TypeScript 开发
+        - **现代化 UI** - 使用 React 18 构建
+        - **高性能** - ESBuild 优化构建
+        - **即插即用** - 符合 Foxel 插件规范
+        
+        ## 📝 更新日志
+        
         - 版本 $VERSION 更新
-        - 优化了全屏和非全屏模式的布局
-        - 改进了工具栏的响应式设计
-        - 增强了键盘快捷键支持
-        - 修复了文本挤压问题
+        - 修复了 TypeScript 类型错误
+        - 优化了插件构建流程
+        - 增强了错误处理机制
+        - 改进了用户体验
+        
+        ---
+        
+        **自动构建**: 此版本由 GitHub Actions 自动构建和发布  
+        **构建时间**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
         EOF
         
         echo "📋 Release files prepared:"
@@ -131,12 +208,33 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ inputs.version }}
-        name: Foxel Image Viewer ${{ inputs.version }}
-        files: |
-          release/foxel-image-viewer.js
-          release/RELEASE_NOTES.md
+        name: Foxel Plus Plugins ${{ inputs.version }}
+        files: release/*.js
         body_path: release/RELEASE_NOTES.md
         draft: false
         prerelease: ${{ inputs.prerelease }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update root plugin files
+      run: |
+        echo "📁 Updating root plugin files..."
+        
+        # 复制所有插件的构建文件到根目录
+        for plugin_dir in foxel-*/; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/dist/plugin.js" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            echo "📋 Copying $plugin_name/dist/plugin.js to root as $plugin_name-plus.js"
+            cp "$plugin_dir/dist/plugin.js" "$plugin_name-plus.js"
+          fi
+        done
+        
+        echo "✅ Root plugin files updated"
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add foxel-*-plus.js
+        git commit -m "chore: update root plugin files for ${{ inputs.version }}" || exit 0
+        git push

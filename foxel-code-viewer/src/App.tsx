@@ -125,7 +125,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const codeRef = useRef<HTMLPreElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 检测文件语言
