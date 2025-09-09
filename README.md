@@ -26,16 +26,16 @@
 #### 方法一：直接下载（推荐）
 
 1. 访问 [Releases 页面](https://github.com/maxage/foxel-plus/releases/latest)
-2. 下载所需的插件文件（如 `foxel-image-viewer.js`）
+2. 下载所需的插件文件（如 `foxel-image-viewer-plus.js`）
 3. 在 Foxel 的"应用"页面添加插件
-4. 输入插件 URL: `https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js`
+4. 输入插件 URL: `https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js`
 5. 安装完成后即可在文件管理器中查看图片
 
 ### 📦 可用插件
 
 | 插件名称 | 描述 | 作者 | 下载链接 |
 |---------|------|------|----------|
-| **foxel-image-viewer** | 功能丰富的图片查看器，支持缩放、拖拽、旋转等操作 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js) |
+| **foxel-image-viewer-plus** | 功能强大的图片查看器 Plus，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js) |
 
 #### 方法二：从源码构建
 

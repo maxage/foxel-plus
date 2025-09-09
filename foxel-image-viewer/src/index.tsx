@@ -6,10 +6,10 @@ import App from './App';
 let root: any = null;
 
 const plugin: RegisteredPlugin = {
-  key: 'com.foxel-plus.image-viewer',
-  name: '图片查看器',
-  version: '1.0.0',
-  description: '一个功能丰富的图片查看器插件，支持缩放、拖拽、旋转等操作',
+  key: 'com.foxel-plus.image-viewer-plus',
+  name: '图片查看器 Plus',
+  version: '1.1.0',
+  description: '功能强大的图片查看器插件，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能',
   author: 'Foxel Plus Team @ maxage',
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',

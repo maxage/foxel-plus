@@ -1,7 +1,7 @@
 {
-  "name": "foxel-image-viewer",
-  "version": "1.0.1",
-  "description": "A simple image viewer plugin for Foxel",
+  "name": "foxel-image-viewer-plus",
+  "version": "1.1.0",
+  "description": "A powerful image viewer plugin for Foxel with advanced features",
   "main": "dist/plugin.js",
   "scripts": {
     "build": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"'",
