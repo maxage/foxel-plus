@@ -6,7 +6,7 @@ import App from './App';
 let root: any = null;
 
 // 从 package.json 读取版本号（在构建时会被替换）
-const VERSION = '1.1.0';
+const VERSION = '1.1.3';
 
 const plugin: RegisteredPlugin = {
   key: 'com.foxel-plus.image-viewer-plus',
