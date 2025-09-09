@@ -19,7 +19,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const [showInfo, setShowInfo] = useState(false);
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number; size: string } | null>(null);
   const [showToolbar, setShowToolbar] = useState(true);
-  const [toolbarTimeout, setToolbarTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [toolbarTimeout, setToolbarTimeout] = useState<number | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -238,7 +238,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   };
 
   const handleMouseLeave = () => {
-    const timeout = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       setShowToolbar(false);
     }, 2000);
     setToolbarTimeout(timeout);
@@ -265,16 +265,19 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   };
 
   const getButtonStyle = (isActive = false) => ({
-    padding: isFullscreen ? '10px 14px' : '8px 12px',
+    padding: isFullscreen ? '10px 14px' : '6px 8px',
     backgroundColor: isActive ? '#007acc' : '#444',
     color: '#fff',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: isFullscreen ? '16px' : '14px',
+    fontSize: isFullscreen ? '16px' : '12px',
     transition: 'background-color 0.2s',
-    minWidth: isFullscreen ? '44px' : 'auto',
-    height: isFullscreen ? '44px' : 'auto'
+    minWidth: isFullscreen ? '44px' : '32px',
+    height: isFullscreen ? '44px' : '28px',
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
   });
 
   return (
@@ -298,11 +301,11 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       {/* 工具栏 */}
       {showToolbar && (
         <div style={{
-          padding: isFullscreen ? '16px 20px' : '12px 16px',
+          padding: isFullscreen ? '16px 20px' : '8px 12px',
           borderBottom: '1px solid #333',
           display: 'flex',
           alignItems: 'center',
-          gap: isFullscreen ? '16px' : '12px',
+          gap: isFullscreen ? '16px' : '6px',
           backgroundColor: isFullscreen ? 'rgba(42, 42, 42, 0.95)' : '#2a2a2a',
           position: 'absolute',
           top: 0,
@@ -311,10 +314,17 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           zIndex: 10,
           transition: 'opacity 0.3s ease',
           backdropFilter: isFullscreen ? 'blur(10px)' : 'none',
-          boxShadow: isFullscreen ? '0 2px 20px rgba(0, 0, 0, 0.5)' : 'none'
+          boxShadow: isFullscreen ? '0 2px 20px rgba(0, 0, 0, 0.5)' : 'none',
+          flexWrap: isFullscreen ? 'nowrap' : 'wrap',
+          minHeight: isFullscreen ? '80px' : 'auto'
         }}>
           {/* 缩放控制 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isFullscreen ? '8px' : '4px',
+            flexShrink: 0
+          }}>
             <button
               onClick={handleZoomOut}
               style={getButtonStyle()}
@@ -324,10 +334,11 @@ const App: React.FC<AppProps> = ({ ctx }) => {
               −
             </button>
             <span style={{ 
-              fontSize: isFullscreen ? '16px' : '14px', 
-              minWidth: '60px', 
+              fontSize: isFullscreen ? '16px' : '12px', 
+              minWidth: isFullscreen ? '60px' : '40px', 
               textAlign: 'center',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap'
             }}>
               {Math.round(zoom * 100)}%
             </span>
@@ -342,7 +353,12 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           </div>
 
           {/* 视图控制 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isFullscreen ? '8px' : '4px',
+            flexShrink: 0
+          }}>
             <button
               onClick={handleResetZoom}
               style={getButtonStyle()}
@@ -362,7 +378,12 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           </div>
 
           {/* 变换控制 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isFullscreen ? '8px' : '4px',
+            flexShrink: 0
+          }}>
             <button
               onClick={handleRotate}
               style={getButtonStyle()}
@@ -392,7 +413,12 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           <div style={{ flex: 1 }} />
 
           {/* 功能按钮 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isFullscreen ? '8px' : '4px',
+            flexShrink: 0
+          }}>
             <button
               onClick={() => setShowInfo(!showInfo)}
               style={getButtonStyle(showInfo)}
@@ -423,7 +449,16 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           </div>
 
           {/* 文件名 */}
-          <span style={{ fontSize: '14px', color: '#ccc', marginLeft: '16px' }}>
+          <span style={{ 
+            fontSize: isFullscreen ? '14px' : '11px', 
+            color: '#ccc', 
+            marginLeft: isFullscreen ? '16px' : '8px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: isFullscreen ? '200px' : '120px',
+            flexShrink: 0
+          }}>
             {ctx.entry.name}
           </span>
         </div>
@@ -463,22 +498,23 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           bottom: '10px',
           left: '10px',
           backgroundColor: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.8)',
-          padding: isFullscreen ? '12px 16px' : '8px 12px',
+          padding: isFullscreen ? '12px 16px' : '6px 8px',
           borderRadius: '6px',
-          fontSize: isFullscreen ? '14px' : '12px',
+          fontSize: isFullscreen ? '14px' : '10px',
           color: '#ccc',
           zIndex: 10,
           backdropFilter: isFullscreen ? 'blur(10px)' : 'none',
           boxShadow: isFullscreen ? '0 2px 10px rgba(0, 0, 0, 0.5)' : '0 1px 5px rgba(0, 0, 0, 0.3)',
           border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-          maxWidth: isFullscreen ? '90%' : '80%'
+          maxWidth: isFullscreen ? '90%' : '70%',
+          lineHeight: isFullscreen ? '1.4' : '1.2'
         }}>
           <div style={{ 
             display: isFullscreen ? 'flex' : 'block',
             flexWrap: isFullscreen ? 'wrap' : 'nowrap',
-            gap: isFullscreen ? '8px' : '0'
+            gap: isFullscreen ? '8px' : '4px'
           }}>
-            <span>快捷键:</span>
+            <span style={{ fontWeight: 'bold' }}>快捷键:</span>
             <span>Ctrl+0(重置)</span>
             <span>Ctrl+±(缩放)</span>
             <span>Ctrl+R(旋转)</span>
