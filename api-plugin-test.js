@@ -73,14 +73,22 @@ class FoxelAPITester {
     async testConnection() {
         console.log('🔍 测试 API 连接...');
         try {
-            const response = await this.makeRequest('/api/system/health');
+            // 尝试系统状态检查
+            let response = await this.makeRequest('/api/config/status');
             if (response.status === 200) {
-                console.log('✅ API 连接成功');
+                console.log('✅ API 连接成功 (状态检查)');
                 return true;
-            } else {
-                console.log(`❌ API 连接失败: ${response.status} ${response.statusText}`);
-                return false;
             }
+            
+            // 如果状态检查失败，尝试配置检查
+            response = await this.makeRequest('/api/config/');
+            if (response.status === 200) {
+                console.log('✅ API 连接成功 (配置检查)');
+                return true;
+            }
+            
+            console.log(`❌ API 连接失败: ${response.status} ${response.statusText}`);
+            return false;
         } catch (error) {
             console.log(`❌ API 连接错误: ${error.message}`);
             return false;

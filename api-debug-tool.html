@@ -257,12 +257,18 @@
             log(`尝试连接到 ${apiBaseUrl}...`);
 
             try {
-                // 首先尝试健康检查
-                const healthResponse = await fetch(`${apiBaseUrl}/api/system/health`);
+                // 首先尝试系统状态检查
+                const healthResponse = await fetch(`${apiBaseUrl}/api/config/status`);
                 if (!healthResponse.ok) {
-                    throw new Error(`健康检查失败: ${healthResponse.status}`);
+                    // 如果状态检查失败，尝试获取配置
+                    const configResponse = await fetch(`${apiBaseUrl}/api/config/`);
+                    if (!configResponse.ok) {
+                        throw new Error(`API 连接失败: ${healthResponse.status} (状态检查) 和 ${configResponse.status} (配置检查)`);
+                    }
+                    log('配置检查通过', 'success');
+                } else {
+                    log('系统状态检查通过', 'success');
                 }
-                log('健康检查通过', 'success');
 
                 // 尝试登录
                 const loginResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {

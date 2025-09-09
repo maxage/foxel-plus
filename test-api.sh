@@ -56,10 +56,19 @@ check_dependencies() {
 test_connection() {
     print_info "测试 API 连接..."
     
-    local response=$(curl -s -w "%{http_code}" -o /dev/null "$API_BASE_URL/api/system/health" 2>/dev/null || echo "000")
+    # 尝试系统状态检查
+    local response=$(curl -s -w "%{http_code}" -o /dev/null "$API_BASE_URL/api/config/status" 2>/dev/null || echo "000")
     
     if [ "$response" = "200" ]; then
-        print_success "API 连接成功"
+        print_success "API 连接成功 (状态检查)"
+        return 0
+    fi
+    
+    # 如果状态检查失败，尝试配置检查
+    response=$(curl -s -w "%{http_code}" -o /dev/null "$API_BASE_URL/api/config/" 2>/dev/null || echo "000")
+    
+    if [ "$response" = "200" ]; then
+        print_success "API 连接成功 (配置检查)"
         return 0
     else
         print_error "API 连接失败 (HTTP $response)"

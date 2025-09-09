@@ -102,7 +102,11 @@
 ### 1. 检查 API 连接
 
 ```bash
-curl -X GET http://10.0.0.8:3737/api/system/health
+# 尝试系统状态检查
+curl -X GET http://10.0.0.8:3737/api/config/status
+
+# 或者尝试配置检查
+curl -X GET http://10.0.0.8:3737/api/config/
 ```
 
 ### 2. 用户登录
