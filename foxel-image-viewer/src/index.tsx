@@ -5,10 +5,13 @@ import App from './App';
 
 let root: any = null;
 
+// 从 package.json 读取版本号（在构建时会被替换）
+const VERSION = '1.1.0';
+
 const plugin: RegisteredPlugin = {
   key: 'com.foxel-plus.image-viewer-plus',
   name: '图片查看器 Plus',
-  version: '1.1.0',
+  version: VERSION,
   description: '功能强大的图片查看器插件，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能',
   author: 'Foxel Plus Team @ maxage',
   website: 'https://github.com/maxage/foxel-plus',

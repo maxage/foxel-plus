@@ -29,6 +29,32 @@ jobs:
       with:
         node-version: '18'
         
+    - name: Update plugin version
+      run: |
+        echo "📦 Updating plugin version to ${{ inputs.version }}"
+        
+        # 提取版本号（去掉 v 前缀）
+        VERSION="${{ inputs.version }}"
+        if [[ $VERSION == v* ]]; then
+          VERSION=${VERSION#v}
+        fi
+        
+        echo "📝 Version: $VERSION"
+        
+        # 更新所有插件的 package.json
+        for plugin_dir in foxel-*/; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/package.json" ]; then
+            echo "🔄 Updating $plugin_dir package.json"
+            cd "$plugin_dir"
+            
+            # 使用 npm version 命令更新版本号
+            npm version "$VERSION" --no-git-tag-version
+            
+            echo "✅ Updated $plugin_dir to version $VERSION"
+            cd ..
+          fi
+        done
+        
     - name: Build plugin
       run: |
         cd foxel-image-viewer
