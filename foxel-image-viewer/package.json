@@ -1,6 +1,6 @@
 {
   "name": "foxel-image-viewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple image viewer plugin for Foxel",
   "main": "dist/plugin.js",
   "scripts": {
