@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foxel 插件调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .log {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #2e7d32; }
+        .error { background-color: #d32f2f; }
+        .warning { background-color: #f57c00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Foxel 插件调试工具</h1>
+        
+        <div class="test-section">
+            <h2>1. 检查 Foxel 环境</h2>
+            <button onclick="checkFoxelEnvironment()">检查 Foxel 环境</button>
+            <div id="foxel-status" class="status"></div>
+            <div id="foxel-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 加载插件文件</h2>
+            <button onclick="loadPlugin()">加载图片查看器插件</button>
+            <button onclick="loadSimplePlugin()">加载简单测试插件</button>
+            <div id="plugin-status" class="status"></div>
+            <div id="plugin-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 检查插件注册</h2>
+            <button onclick="checkPluginRegistration()">检查插件注册</button>
+            <div id="registration-status" class="status"></div>
+            <div id="registration-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. 测试插件功能</h2>
+            <button onclick="testPluginFunction()">测试插件功能</button>
+            <div id="function-status" class="status"></div>
+            <div id="function-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. 控制台日志</h2>
+            <button onclick="clearLogs()">清空日志</button>
+            <div id="console-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logs.push(logMessage);
+            console.log(logMessage);
+            updateConsoleLog();
+        }
+
+        function updateConsoleLog() {
+            const consoleLog = document.getElementById('console-log');
+            consoleLog.textContent = logs.join('\n');
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function setStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        function setLog(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+        }
+
+        function checkFoxelEnvironment() {
+            log('开始检查 Foxel 环境...');
+            
+            // 检查 window 对象
+            if (typeof window === 'undefined') {
+                setStatus('foxel-status', '❌ window 对象未定义', 'error');
+                setLog('foxel-log', 'window 对象未定义，无法运行插件');
+                return;
+            }
+            log('✅ window 对象存在');
+
+            // 检查 FoxelRegister 函数
+            if (typeof window.FoxelRegister === 'function') {
+                setStatus('foxel-status', '✅ FoxelRegister 函数存在', 'success');
+                setLog('foxel-log', 'FoxelRegister 函数已找到，版本: ' + (window.FoxelRegister.version || '未知'));
+                log('FoxelRegister 函数存在');
+            } else {
+                setStatus('foxel-status', '❌ FoxelRegister 函数不存在', 'error');
+                setLog('foxel-log', 'FoxelRegister 函数未找到，插件无法注册');
+                log('FoxelRegister 函数不存在');
+            }
+
+            // 检查其他 Foxel 相关对象
+            const foxelObjects = ['Foxel', 'foxel', 'FoxelHost'];
+            let foundObjects = [];
+            foxelObjects.forEach(obj => {
+                if (window[obj]) {
+                    foundObjects.push(obj);
+                }
+            });
+
+            if (foundObjects.length > 0) {
+                log('找到 Foxel 相关对象: ' + foundObjects.join(', '));
+                setLog('foxel-log', document.getElementById('foxel-log').textContent + '\n\n找到 Foxel 相关对象: ' + foundObjects.join(', '));
+            }
+        }
+
+        function loadPlugin() {
+            log('开始加载图片查看器插件文件...');
+            
+            const script = document.createElement('script');
+            script.src = './foxel-image-viewer.js';
+            script.onload = function() {
+                setStatus('plugin-status', '✅ 图片查看器插件文件加载成功', 'success');
+                setLog('plugin-log', '图片查看器插件文件已成功加载');
+                log('图片查看器插件文件加载成功');
+            };
+            script.onerror = function() {
+                setStatus('plugin-status', '❌ 图片查看器插件文件加载失败', 'error');
+                setLog('plugin-log', '无法加载图片查看器插件文件，请检查文件路径');
+                log('图片查看器插件文件加载失败');
+            };
+            document.head.appendChild(script);
+        }
+
+        function loadSimplePlugin() {
+            log('开始加载简单测试插件文件...');
+            
+            const script = document.createElement('script');
+            script.src = './simple-test-plugin.js';
+            script.onload = function() {
+                setStatus('plugin-status', '✅ 简单测试插件文件加载成功', 'success');
+                setLog('plugin-log', '简单测试插件文件已成功加载');
+                log('简单测试插件文件加载成功');
+            };
+            script.onerror = function() {
+                setStatus('plugin-status', '❌ 简单测试插件文件加载失败', 'error');
+                setLog('plugin-log', '无法加载简单测试插件文件，请检查文件路径');
+                log('简单测试插件文件加载失败');
+            };
+            document.head.appendChild(script);
+        }
+
+        function checkPluginRegistration() {
+            log('开始检查插件注册...');
+            
+            // 检查插件是否已注册
+            if (window.FoxelRegister) {
+                // 尝试获取已注册的插件列表
+                if (window.FoxelRegister.plugins) {
+                    const plugins = window.FoxelRegister.plugins;
+                    setStatus('registration-status', `✅ 找到 ${plugins.length} 个已注册插件`, 'success');
+                    setLog('registration-log', '已注册的插件:\n' + plugins.map(p => `- ${p.name} (${p.key})`).join('\n'));
+                    log(`找到 ${plugins.length} 个已注册插件`);
+                } else {
+                    setStatus('registration-status', '⚠️ FoxelRegister 存在但无法获取插件列表', 'warning');
+                    setLog('registration-log', 'FoxelRegister 函数存在，但无法获取已注册的插件列表');
+                    log('无法获取插件列表');
+                }
+            } else {
+                setStatus('registration-status', '❌ FoxelRegister 不存在', 'error');
+                setLog('registration-log', 'FoxelRegister 函数不存在，无法检查插件注册');
+                log('FoxelRegister 不存在');
+            }
+        }
+
+        function testPluginFunction() {
+            log('开始测试插件功能...');
+            
+            // 模拟插件上下文
+            const mockCtx = {
+                filePath: 'test.jpg',
+                entry: { name: 'test.jpg' },
+                urls: { downloadUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiM0NDQiLz4KPHN2ZyB4PSI0MCIgeT0iNDAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj4KPHBhdGggZD0iTTkgMTJMMTEgMTRMMTUgMTBMMjEgMTZWMThIM1YxNkw5IDEyWiIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+' },
+                host: { close: () => console.log('关闭插件') }
+            };
+
+            // 创建测试容器
+            const testContainer = document.createElement('div');
+            testContainer.id = 'test-plugin-container';
+            testContainer.style.cssText = 'width: 400px; height: 300px; border: 1px solid #333; margin: 20px 0;';
+            document.body.appendChild(testContainer);
+
+            // 检查插件
+            if (window.FoxelRegister && window.FoxelRegister.plugins) {
+                const plugins = window.FoxelRegister.plugins;
+                const imageViewerPlugin = plugins.find(p => p.key === 'com.foxel-plus.image-viewer');
+                const simpleTestPlugin = plugins.find(p => p.key === 'com.foxel-plus.simple-test');
+                
+                let foundPlugin = null;
+                let pluginName = '';
+                
+                if (imageViewerPlugin) {
+                    foundPlugin = imageViewerPlugin;
+                    pluginName = '图片查看器插件';
+                } else if (simpleTestPlugin) {
+                    foundPlugin = simpleTestPlugin;
+                    pluginName = '简单测试插件';
+                }
+                
+                if (foundPlugin) {
+                    setStatus('function-status', `✅ 找到${pluginName}`, 'success');
+                    setLog('function-log', `插件信息:\n${JSON.stringify(foundPlugin, null, 2)}`);
+                    log(`找到${pluginName}`);
+                    
+                    // 尝试挂载插件
+                    try {
+                        foundPlugin.mount(testContainer, mockCtx);
+                        setLog('function-log', document.getElementById('function-log').textContent + '\n\n✅ 插件挂载成功');
+                        log('插件挂载成功');
+                    } catch (error) {
+                        setLog('function-log', document.getElementById('function-log').textContent + '\n\n❌ 插件挂载失败: ' + error.message);
+                        log('插件挂载失败: ' + error.message);
+                    }
+                } else {
+                    setStatus('function-status', '❌ 未找到任何插件', 'error');
+                    setLog('function-log', `在已注册的插件中未找到目标插件。\n已注册的插件: ${plugins.map(p => p.key).join(', ')}`);
+                    log('未找到目标插件');
+                }
+            } else {
+                setStatus('function-status', '❌ 无法检查插件', 'error');
+                setLog('function-log', '无法获取插件列表');
+                log('无法检查插件');
+            }
+        }
+
+        function clearLogs() {
+            logs = [];
+            updateConsoleLog();
+        }
+
+        // 页面加载完成后自动检查
+        window.addEventListener('load', function() {
+            log('页面加载完成，开始自动检查...');
+            checkFoxelEnvironment();
+        });
+    </script>
+</body>
+</html>
