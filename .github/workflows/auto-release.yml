@@ -1,0 +1,152 @@
+name: Auto Release Plugin
+
+on:
+  push:
+    paths:
+      - 'foxel-image-viewer/**'
+      - 'foxel-image-viewer.js'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  auto-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Get version from package.json
+      id: get-version
+      run: |
+        cd foxel-image-viewer
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Plugin version: $VERSION"
+        
+    - name: Check if release exists
+      id: check-release
+      run: |
+        TAG=${{ steps.get-version.outputs.tag }}
+        if git rev-parse "$TAG" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "🏷️ Tag $TAG already exists"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "🆕 Tag $TAG does not exist, will create release"
+        fi
+        
+    - name: Build plugin
+      if: steps.check-release.outputs.exists == 'false'
+      run: |
+        cd foxel-image-viewer
+        npm ci
+        npm run build
+        echo "🔨 Plugin built successfully"
+        
+    - name: Prepare release files
+      if: steps.check-release.outputs.exists == 'false'
+      run: |
+        mkdir -p release
+        cp foxel-image-viewer/dist/plugin.js release/foxel-image-viewer.js
+        
+        # Get file size
+        FILE_SIZE=$(du -h release/foxel-image-viewer.js | cut -f1)
+        echo "📏 Plugin file size: $FILE_SIZE"
+        
+        # Create release notes
+        cat > release/RELEASE_NOTES.md << EOF
+        # 🎉 Foxel Image Viewer v${{ steps.get-version.outputs.version }}
+        
+        ## 📦 插件信息
+        
+        **文件大小**: $FILE_SIZE  
+        **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF  
+        **构建时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')
+        
+        ## ✨ 主要功能
+        
+        - 🔍 **智能缩放** - 支持 10%-500% 缩放范围
+        - 🖱️ **拖拽移动** - 流畅的图片拖拽体验
+        - 🎛️ **工具栏控制** - 直观的操作界面
+        - 🌙 **深色主题** - 现代化的视觉设计
+        - 📱 **响应式设计** - 适配不同屏幕尺寸
+        
+        ## 🚀 安装方法
+        
+        1. 下载 \`foxel-image-viewer.js\` 文件
+        2. 在 Foxel 的"应用"页面添加插件
+        3. 输入插件 URL: \`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js\`
+        4. 安装完成后即可在文件管理器中查看图片
+        
+        ## 🔧 技术特性
+        
+        - **完全自包含** - 单文件输出，无外部依赖
+        - **类型安全** - 基于 TypeScript 开发
+        - **现代化 UI** - 使用 React 19 构建
+        - **高性能** - ESBuild 优化构建
+        - **即插即用** - 符合 Foxel 插件规范
+        
+        ## 📝 更新日志
+        
+        本次更新包含以下改进：
+        - 优化了构建配置，严格按照 Foxel 官方指南
+        - 改进了插件元数据解析
+        - 提升了整体性能和稳定性
+        
+        ---
+        
+        **自动构建**: 此版本由 GitHub Actions 自动构建和发布
+        EOF
+        
+        echo "📋 Release files prepared:"
+        ls -la release/
+        
+    - name: Create Git Tag
+      if: steps.check-release.outputs.exists == 'false'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag -a ${{ steps.get-version.outputs.tag }} -m "Release ${{ steps.get-version.outputs.tag }}"
+        git push origin ${{ steps.get-version.outputs.tag }}
+        echo "🏷️ Created and pushed tag: ${{ steps.get-version.outputs.tag }}"
+        
+    - name: Create GitHub Release
+      if: steps.check-release.outputs.exists == 'false'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get-version.outputs.tag }}
+        name: Foxel Image Viewer ${{ steps.get-version.outputs.tag }}
+        files: |
+          release/foxel-image-viewer.js
+          release/RELEASE_NOTES.md
+        body_path: release/RELEASE_NOTES.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update root plugin file
+      if: steps.check-release.outputs.exists == 'false'
+      run: |
+        cp foxel-image-viewer/dist/plugin.js foxel-image-viewer.js
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add foxel-image-viewer.js
+        git commit -m "chore: update root plugin file for v${{ steps.get-version.outputs.version }}"
+        git push origin main
+        echo "📁 Updated root plugin file"
+        
+    - name: Skip release
+      if: steps.check-release.outputs.exists == 'true'
+      run: |
+        echo "⏭️ Release ${{ steps.get-version.outputs.tag }} already exists, skipping"

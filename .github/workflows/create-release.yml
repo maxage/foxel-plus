@@ -1,12 +1,17 @@
-name: Create Release with JS File
+name: Manual Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version'
+        description: 'Release version (e.g., v1.0.0)'
         required: true
-        default: 'v1.3.0'
+        default: 'v1.0.0'
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   create-release:
@@ -72,12 +77,12 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ inputs.version }}
-        name: Foxel Plus ${{ inputs.version }}
+        name: Foxel Image Viewer ${{ inputs.version }}
         files: |
           release/foxel-image-viewer.js
           release/RELEASE_NOTES.md
         body_path: release/RELEASE_NOTES.md
         draft: false
-        prerelease: false
+        prerelease: ${{ inputs.prerelease }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

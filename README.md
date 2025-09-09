@@ -28,9 +28,9 @@
 
 1. 访问 [Releases 页面](https://github.com/maxage/foxel-plus/releases/latest)
 2. 下载所需的插件文件（如 `foxel-image-viewer.js`）
-3. 将文件复制到 Foxel 的 `web/public/plugins/` 目录
-4. 在 Foxel 的"应用"页面安装插件
-5. 选择对应文件类型即可使用
+3. 在 Foxel 的"应用"页面添加插件
+4. 输入插件 URL: `https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js`
+5. 安装完成后即可在文件管理器中查看图片
 
 #### 方法二：从源码构建
 
@@ -400,6 +400,39 @@ graph LR
 - [Foxel 插件示例](https://github.com/DrizzleTime/foxel-text-viewer) - 官方文本查看器示例
 - [React 最佳实践](https://react.dev/learn) - React 学习指南
 - [TypeScript 入门](https://www.typescriptlang.org/docs/handbook/intro.html) - TypeScript 入门教程
+
+## 🔄 自动发布
+
+本项目使用 GitHub Actions 实现自动构建和发布：
+
+### 🚀 自动触发条件
+
+- **插件文件修改** - 当 `foxel-image-viewer/` 目录下的文件发生变更时
+- **根目录插件文件修改** - 当 `foxel-image-viewer.js` 文件发生变更时
+- **推送到 main 分支** - 确保只在主分支上触发
+
+### 📦 发布流程
+
+1. **自动检测** - 检测到插件文件变更
+2. **构建插件** - 使用 ESBuild 构建最新版本
+3. **版本管理** - 从 `package.json` 读取版本号
+4. **创建标签** - 自动创建 Git 标签
+5. **发布 Release** - 在 GitHub 上创建 Release
+6. **更新文件** - 更新根目录的插件文件
+
+### 🛠️ 手动操作
+
+- **手动发布** - 使用 "Manual Release" 工作流
+- **测试发布** - 使用 "Test Release" 工作流创建预发布版本
+- **版本控制** - 通过修改 `package.json` 中的版本号来管理版本
+
+### 📋 工作流说明
+
+| 工作流 | 触发条件 | 用途 |
+|--------|----------|------|
+| Auto Release | 插件文件变更 | 自动构建和发布正式版本 |
+| Manual Release | 手动触发 | 手动创建指定版本的发布 |
+| Test Release | 手动触发 | 创建测试版本用于验证 |
 
 ## 📊 项目统计
 

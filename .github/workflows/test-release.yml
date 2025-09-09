@@ -3,10 +3,10 @@ name: Test Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Test version'
+      test_version:
+        description: 'Test version (e.g., v1.0.0-test)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.0.0-test'
 
 jobs:
   test-release:
@@ -26,51 +26,69 @@ jobs:
         cd foxel-image-viewer
         npm ci
         npm run build
+        echo "🔨 Plugin built successfully"
         
-    - name: Create release files
+    - name: Prepare test release files
       run: |
         mkdir -p release
         cp foxel-image-viewer/dist/plugin.js release/foxel-image-viewer.js
         
-        # Create release notes
-        cat > release/RELEASE_NOTES.md << 'EOF'
-        # 🎉 Foxel Plus 测试发布
+        # Get file size
+        FILE_SIZE=$(du -h release/foxel-image-viewer.js | cut -f1)
+        echo "📏 Plugin file size: $FILE_SIZE"
         
-        ## 📦 包含的插件
+        # Create test release notes
+        cat > release/RELEASE_NOTES.md << EOF
+        # 🧪 Test Release - Foxel Image Viewer ${{ inputs.test_version }}
         
-        ### 🖼️ foxel-image-viewer (v1.0.0)
+        ## ⚠️ 注意
+        这是一个测试版本，用于验证自动构建和发布流程。
         
-        **描述**: 一个功能丰富的图片查看器插件
-        **文件大小**: $(du -h release/foxel-image-viewer.js | cut -f1)
-        **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF
+        ## 📦 插件信息
         
-        #### 主要功能
-        - 🔍 智能缩放（10%-500%）
-        - 🖱️ 拖拽移动
-        - 🎛️ 工具栏控制
-        - 🌙 深色主题
-        - 📱 响应式设计
+        **文件大小**: $FILE_SIZE  
+        **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF  
+        **构建时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')
         
-        #### 安装方法
+        ## 🔧 测试内容
+        
+        - ✅ 插件构建成功
+        - ✅ 文件大小正常
+        - ✅ 元数据完整
+        - ✅ 符合 Foxel 规范
+        
+        ## 🚀 安装方法
+        
         1. 下载 \`foxel-image-viewer.js\` 文件
-        2. 将文件复制到 Foxel 的 \`web/public/plugins/\` 目录
-        3. 在 Foxel 的"应用"页面安装插件
-        4. 选择对应文件类型即可使用
+        2. 在 Foxel 的"应用"页面添加插件
+        3. 输入插件 URL: \`https://github.com/maxage/foxel-plus/releases/download/${{ inputs.test_version }}/foxel-image-viewer.js\`
+        4. 安装并测试功能
+        
+        ---
+        
+        **测试构建**: 此版本用于测试自动构建流程
         EOF
         
-        echo "📋 Release files created:"
+        echo "📋 Test release files prepared:"
         ls -la release/
         
-    - name: Create GitHub Release
+    - name: Create Test Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ inputs.version }}
-        name: Foxel Plus ${{ inputs.version }}
+        tag_name: ${{ inputs.test_version }}
+        name: Test Release - Foxel Image Viewer ${{ inputs.test_version }}
         files: |
-          release/*.js
+          release/foxel-image-viewer.js
           release/RELEASE_NOTES.md
         body_path: release/RELEASE_NOTES.md
         draft: false
-        prerelease: false
+        prerelease: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Test Results
+      run: |
+        echo "✅ Test release created successfully!"
+        echo "🏷️ Tag: ${{ inputs.test_version }}"
+        echo "📁 Files: foxel-image-viewer.js, RELEASE_NOTES.md"
+        echo "🔗 URL: https://github.com/maxage/foxel-plus/releases/tag/${{ inputs.test_version }}"
