@@ -1,0 +1,54 @@
+name: Release Foxel Plugins
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Build all plugins
+      run: |
+        for plugin in foxel-*/; do
+          if [ -f "$plugin/package.json" ]; then
+            echo "Building $plugin..."
+            cd "$plugin"
+            npm ci
+            npm run build
+            cd ..
+          fi
+        done
+        
+    - name: Create release archive
+      run: |
+        mkdir -p release
+        for plugin in foxel-*/; do
+          if [ -f "$plugin/dist/plugin.js" ]; then
+            plugin_name=$(basename "$plugin")
+            cp "$plugin/dist/plugin.js" "release/${plugin_name}.js"
+            echo "✅ Packaged $plugin_name"
+          fi
+        done
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

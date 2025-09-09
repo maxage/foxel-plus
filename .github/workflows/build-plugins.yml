@@ -1,0 +1,63 @@
+name: Build Foxel Plugins
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'foxel-*/**'
+      - '.github/workflows/build-plugins.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'foxel-*/**'
+      - '.github/workflows/build-plugins.yml'
+  workflow_dispatch:
+
+jobs:
+  build-plugins:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        plugin: [
+          'foxel-image-viewer'
+        ]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.plugin }}/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd ${{ matrix.plugin }}
+        npm ci
+        
+    - name: Build plugin
+      run: |
+        cd ${{ matrix.plugin }}
+        npm run build
+        
+    - name: Check build output
+      run: |
+        cd ${{ matrix.plugin }}
+        if [ -f "dist/plugin.js" ]; then
+          echo "✅ Build successful for ${{ matrix.plugin }}"
+          echo "📊 File size: $(du -h dist/plugin.js | cut -f1)"
+        else
+          echo "❌ Build failed for ${{ matrix.plugin }}"
+          exit 1
+        fi
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.plugin }}-build
+        path: ${{ matrix.plugin }}/dist/
+        retention-days: 30

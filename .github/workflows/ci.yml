@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        for plugin in foxel-*/; do
+          if [ -f "$plugin/package.json" ]; then
+            echo "Installing dependencies for $plugin..."
+            cd "$plugin"
+            npm ci
+            cd ..
+          fi
+        done
+        
+    - name: Type check
+      run: |
+        for plugin in foxel-*/; do
+          if [ -f "$plugin/tsconfig.json" ]; then
+            echo "Type checking $plugin..."
+            cd "$plugin"
+            npx tsc --noEmit
+            cd ..
+          fi
+        done
+        
+    - name: Build test
+      run: |
+        for plugin in foxel-*/; do
+          if [ -f "$plugin/package.json" ]; then
+            echo "Building $plugin..."
+            cd "$plugin"
+            npm run build
+            cd ..
+          fi
+        done
