@@ -34,7 +34,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     setFlipVertical(false);
     setShowInfo(false);
     setImageInfo(null);
-  }, [ctx.filePath]);
+  }, [ctx.entry.name]);
 
   // 键盘快捷键
   useEffect(() => {
