@@ -16,6 +16,9 @@ on:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
     
     steps:
     - name: Checkout code
@@ -73,8 +76,17 @@ jobs:
         echo "📋 Release files prepared:"
         ls -la release/
         
+    - name: Check GitHub Token
+      run: |
+        echo "🔑 Checking GitHub Token permissions..."
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "❌ GITHUB_TOKEN is not set"
+          exit 1
+        fi
+        echo "✅ GITHUB_TOKEN is available"
+        
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ inputs.version }}
         name: Foxel Image Viewer ${{ inputs.version }}
@@ -84,5 +96,6 @@ jobs:
         body_path: release/RELEASE_NOTES.md
         draft: false
         prerelease: ${{ inputs.prerelease }}
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
