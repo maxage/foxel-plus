@@ -98,16 +98,26 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   // 全屏模式
   useEffect(() => {
-    if (isFullscreen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      if (isCurrentlyFullscreen) {
+        document.body.style.overflow = 'hidden';
+        // 全屏时确保工具栏显示
+        setShowToolbar(true);
+      } else {
+        document.body.style.overflow = 'auto';
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     
     return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.body.style.overflow = 'auto';
     };
-  }, [isFullscreen]);
+  }, []);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     setImageLoaded(true);
@@ -254,6 +264,19 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     return transform;
   };
 
+  const getButtonStyle = (isActive = false) => ({
+    padding: isFullscreen ? '10px 14px' : '8px 12px',
+    backgroundColor: isActive ? '#007acc' : '#444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: isFullscreen ? '16px' : '14px',
+    transition: 'background-color 0.2s',
+    minWidth: isFullscreen ? '44px' : 'auto',
+    height: isFullscreen ? '44px' : 'auto'
+  });
+
   return (
     <div 
       ref={containerRef}
@@ -275,53 +298,42 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       {/* 工具栏 */}
       {showToolbar && (
         <div style={{
-          padding: '12px 16px',
+          padding: isFullscreen ? '16px 20px' : '12px 16px',
           borderBottom: '1px solid #333',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          backgroundColor: '#2a2a2a',
+          gap: isFullscreen ? '16px' : '12px',
+          backgroundColor: isFullscreen ? 'rgba(42, 42, 42, 0.95)' : '#2a2a2a',
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           zIndex: 10,
-          transition: 'opacity 0.3s ease'
+          transition: 'opacity 0.3s ease',
+          backdropFilter: isFullscreen ? 'blur(10px)' : 'none',
+          boxShadow: isFullscreen ? '0 2px 20px rgba(0, 0, 0, 0.5)' : 'none'
         }}>
           {/* 缩放控制 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={handleZoomOut}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
               −
             </button>
-            <span style={{ fontSize: '14px', minWidth: '60px', textAlign: 'center' }}>
+            <span style={{ 
+              fontSize: isFullscreen ? '16px' : '14px', 
+              minWidth: '60px', 
+              textAlign: 'center',
+              fontWeight: 'bold'
+            }}>
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={handleZoomIn}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
@@ -333,16 +345,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={handleResetZoom}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
@@ -350,16 +353,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             </button>
             <button
               onClick={handleFitToScreen}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
@@ -371,16 +365,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={handleRotate}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
@@ -388,16 +373,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             </button>
             <button
               onClick={handleFlipHorizontal}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: flipHorizontal ? '#007acc' : '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle(flipHorizontal)}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = flipHorizontal ? '#0088dd' : '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = flipHorizontal ? '#007acc' : '#444'}
             >
@@ -405,16 +381,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             </button>
             <button
               onClick={handleFlipVertical}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: flipVertical ? '#007acc' : '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle(flipVertical)}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = flipVertical ? '#0088dd' : '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = flipVertical ? '#007acc' : '#444'}
             >
@@ -428,16 +395,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => setShowInfo(!showInfo)}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: showInfo ? '#007acc' : '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle(showInfo)}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = showInfo ? '#0088dd' : '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = showInfo ? '#007acc' : '#444'}
             >
@@ -445,16 +403,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             </button>
             <button
               onClick={handleToggleFullscreen}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
-              }}
+              style={getButtonStyle()}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#444'}
             >
@@ -463,14 +412,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             <button
               onClick={handleClose}
               style={{
-                padding: '8px 12px',
-                backgroundColor: '#d32f2f',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'background-color 0.2s'
+                ...getButtonStyle(),
+                backgroundColor: '#d32f2f'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e53935'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d32f2f'}
@@ -490,14 +433,17 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       {showInfo && imageInfo && (
         <div style={{
           position: 'absolute',
-          top: showToolbar ? '60px' : '10px',
+          top: showToolbar ? (isFullscreen ? '80px' : '60px') : '10px',
           right: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: '12px',
+          backgroundColor: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+          padding: isFullscreen ? '16px' : '12px',
           borderRadius: '8px',
-          fontSize: '14px',
+          fontSize: isFullscreen ? '16px' : '14px',
           zIndex: 10,
-          minWidth: '200px'
+          minWidth: isFullscreen ? '250px' : '200px',
+          backdropFilter: isFullscreen ? 'blur(10px)' : 'none',
+          boxShadow: isFullscreen ? '0 4px 20px rgba(0, 0, 0, 0.5)' : '0 2px 10px rgba(0, 0, 0, 0.3)',
+          border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
         }}>
           <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>图片信息</div>
           <div>尺寸: {imageInfo.width} × {imageInfo.height}</div>
@@ -516,14 +462,32 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           position: 'absolute',
           bottom: '10px',
           left: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: '8px 12px',
+          backgroundColor: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+          padding: isFullscreen ? '12px 16px' : '8px 12px',
           borderRadius: '6px',
-          fontSize: '12px',
+          fontSize: isFullscreen ? '14px' : '12px',
           color: '#ccc',
-          zIndex: 10
+          zIndex: 10,
+          backdropFilter: isFullscreen ? 'blur(10px)' : 'none',
+          boxShadow: isFullscreen ? '0 2px 10px rgba(0, 0, 0, 0.5)' : '0 1px 5px rgba(0, 0, 0, 0.3)',
+          border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+          maxWidth: isFullscreen ? '90%' : '80%'
         }}>
-          <div>快捷键: Ctrl+0(重置) Ctrl+±(缩放) Ctrl+R(旋转) Ctrl+H/V(翻转) Ctrl+F(全屏) Ctrl+I(信息) Space(工具栏) Esc(关闭)</div>
+          <div style={{ 
+            display: isFullscreen ? 'flex' : 'block',
+            flexWrap: isFullscreen ? 'wrap' : 'nowrap',
+            gap: isFullscreen ? '8px' : '0'
+          }}>
+            <span>快捷键:</span>
+            <span>Ctrl+0(重置)</span>
+            <span>Ctrl+±(缩放)</span>
+            <span>Ctrl+R(旋转)</span>
+            <span>Ctrl+H/V(翻转)</span>
+            <span>Ctrl+F(全屏)</span>
+            <span>Ctrl+I(信息)</span>
+            <span>Space(工具栏)</span>
+            <span>Esc(关闭)</span>
+          </div>
         </div>
       )}
 
@@ -537,7 +501,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           alignItems: 'center',
           justifyContent: 'center',
           cursor: isDragging ? 'grabbing' : 'grab',
-          marginTop: showToolbar ? '60px' : '0'
+          marginTop: showToolbar ? (isFullscreen ? '80px' : '60px') : '0',
+          paddingBottom: isFullscreen ? '60px' : '0'
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
