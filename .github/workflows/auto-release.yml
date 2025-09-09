@@ -139,10 +139,11 @@ jobs:
             PLUGIN_NAME=$(node -p "require('./$plugin/package.json').name")
             PLUGIN_DESC=$(node -p "require('./$plugin/package.json').description")
             PLUGIN_AUTHOR=$(node -p "require('./$plugin/package.json').author")
+            PLUGIN_VERSION=$(node -p "require('./$plugin/package.json').version")
             FILE_SIZE=$(du -h "release/$plugin.js" | cut -f1)
             
             cat >> release/RELEASE_NOTES.md << EOF
-        ### 🔌 $PLUGIN_NAME
+        ### 🔌 $PLUGIN_NAME (v$PLUGIN_VERSION)
         
         **描述**: $PLUGIN_DESC  
         **作者**: $PLUGIN_AUTHOR  

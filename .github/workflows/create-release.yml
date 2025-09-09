@@ -66,22 +66,40 @@ jobs:
         mkdir -p release
         cp foxel-image-viewer/dist/plugin.js release/foxel-image-viewer.js
         
+        # 获取实际版本号和文件大小
+        VERSION="${{ inputs.version }}"
+        if [[ $VERSION == v* ]]; then
+          VERSION=${VERSION#v}
+        fi
+        
+        FILE_SIZE=$(du -h release/foxel-image-viewer.js | cut -f1)
+        
+        # 获取插件信息
+        PLUGIN_NAME=$(cd foxel-image-viewer && node -p "require('./package.json').name")
+        PLUGIN_DESCRIPTION=$(cd foxel-image-viewer && node -p "require('./package.json').description")
+        PLUGIN_AUTHOR=$(cd foxel-image-viewer && node -p "require('./package.json').author")
+        
         # Create release notes
-        cat > release/RELEASE_NOTES.md << 'EOF'
+        cat > release/RELEASE_NOTES.md << EOF
         # 🎉 Foxel Plus 发布说明
         
         ## 📦 包含的插件
         
-        ### 🖼️ foxel-image-viewer (v1.0.0)
+        ### 🖼️ $PLUGIN_NAME (v$VERSION)
         
-        **描述**: 一个功能丰富的图片查看器插件，支持缩放、拖拽、旋转等操作
-        **文件大小**: $(du -h release/foxel-image-viewer.js | cut -f1)
+        **描述**: $PLUGIN_DESCRIPTION  
+        **作者**: $PLUGIN_AUTHOR  
+        **文件大小**: $FILE_SIZE  
         **支持格式**: JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF
         
         #### 主要功能
         - 🔍 智能缩放（10%-500%）
         - 🖱️ 拖拽移动
-        - 🎛️ 工具栏控制
+        - 🔄 旋转和翻转
+        - ⤢ 全屏模式
+        - ℹ️ 图片信息显示
+        - ⌨️ 键盘快捷键支持
+        - 🎛️ 智能工具栏
         - 🌙 深色主题
         - 📱 响应式设计
         
@@ -97,6 +115,13 @@ jobs:
         - **现代化 UI** - 使用 React 18 构建
         - **高性能** - ESBuild 优化构建
         - **即插即用** - 符合 Foxel 插件规范
+        
+        #### 更新日志
+        - 版本 $VERSION 更新
+        - 优化了全屏和非全屏模式的布局
+        - 改进了工具栏的响应式设计
+        - 增强了键盘快捷键支持
+        - 修复了文本挤压问题
         EOF
         
         echo "📋 Release files prepared:"
