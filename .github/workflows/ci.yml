@@ -14,7 +14,9 @@ jobs:
       matrix:
         plugin: [
           'foxel-image-viewer',
-          'foxel-code-viewer'
+          'foxel-code-viewer',
+          'foxel-code-editor',
+          'foxel-media-player'
         ]
     
     steps:
