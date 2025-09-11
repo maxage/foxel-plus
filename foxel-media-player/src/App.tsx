@@ -126,13 +126,10 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
 
   // Refs
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(null);
 
@@ -140,59 +137,6 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-
-  // 处理从Foxel传递过来的文件
-  useEffect(() => {
-    if (ctx && ctx.entry && ctx.urls.downloadUrl) {
-      const fileName = ctx.entry.name;
-      const fileUrl = ctx.urls.downloadUrl;
-      const fileSize = ctx.entry.size;
-      const fileType = getFileType(fileName);
-      
-      if (fileType !== 'unknown') {
-        // 创建媒体文件对象
-        const mediaFile: MediaFile = {
-          id: `foxel-${Date.now()}`,
-          name: fileName,
-          url: fileUrl,
-          type: fileType,
-          size: fileSize
-        };
-        
-        // 添加到默认播放列表
-        setPlaylists(prev => {
-          const defaultPlaylist = prev.find(p => p.name === '默认播放列表') || {
-            id: 'default',
-            name: '默认播放列表',
-            files: [],
-            currentIndex: 0
-          };
-          
-          const updatedPlaylist = {
-            ...defaultPlaylist,
-            files: [...defaultPlaylist.files, mediaFile],
-            currentIndex: defaultPlaylist.files.length
-          };
-          
-          const otherPlaylists = prev.filter(p => p.name !== '默认播放列表');
-          return [...otherPlaylists, updatedPlaylist];
-        });
-        
-        // 设置为当前文件
-        setCurrentFile(mediaFile);
-        setCurrentPlaylist(prev => prev || {
-          id: 'default',
-          name: '默认播放列表',
-          files: [mediaFile],
-          currentIndex: 0
-        });
-        
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
-    }
-  }, [ctx]);
 
   // 检测文件类型
   const getFileType = (filename: string): 'audio' | 'video' | 'unknown' => {
@@ -204,6 +148,57 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
     if (videoExts.includes(ext)) return 'video';
     return 'unknown';
   };
+
+  // 处理从Foxel传递过来的文件
+  useEffect(() => {
+    if (ctx && ctx.entry && ctx.urls.downloadUrl) {
+      const fileName = ctx.entry.name;
+      const fileUrl = ctx.urls.downloadUrl;
+      const fileSize = ctx.entry.size;
+      const fileType = getFileType(fileName);
+      
+      console.log('Foxel Media Player: 接收到文件', { fileName, fileUrl, fileSize, fileType });
+      
+      if (fileType !== 'unknown') {
+        // 创建媒体文件对象
+        const mediaFile: MediaFile = {
+          id: `foxel-${Date.now()}`,
+          name: fileName,
+          url: fileUrl,
+          type: fileType,
+          size: fileSize
+        };
+        
+        console.log('Foxel Media Player: 创建媒体文件对象', mediaFile);
+        
+        // 直接设置为当前文件，不添加到播放列表
+        setCurrentFile(mediaFile);
+        setLoading(false);
+      } else {
+        console.log('Foxel Media Player: 不支持的文件类型', fileName);
+        setLoading(false);
+      }
+    } else {
+      console.log('Foxel Media Player: 没有接收到文件信息', { ctx: !!ctx, entry: !!ctx?.entry, downloadUrl: !!ctx?.urls?.downloadUrl });
+      setLoading(false);
+    }
+  }, [ctx]);
+
+  // 当currentFile变化时自动开始播放
+  useEffect(() => {
+    if (currentFile && (audioRef.current || videoRef.current)) {
+      console.log('Foxel Media Player: 开始播放文件', currentFile);
+      // 延迟一点时间确保媒体元素已经设置好src
+      setTimeout(() => {
+        const mediaElement = currentFile.type === 'video' ? videoRef.current : audioRef.current;
+        if (mediaElement) {
+          mediaElement.play().catch(err => {
+            console.error('Foxel Media Player: 播放失败', err);
+          });
+        }
+      }, 100);
+    }
+  }, [currentFile]);
 
   // 格式化时间
   const formatTime = (seconds: number): string => {
@@ -233,14 +228,6 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
     return newPlaylist;
   };
 
-  // 添加文件到播放列表
-  const addFileToPlaylist = (playlistId: string, file: MediaFile) => {
-    setPlaylists(prev => prev.map(playlist => 
-      playlist.id === playlistId 
-        ? { ...playlist, files: [...playlist.files, file] }
-        : playlist
-    ));
-  };
 
   // 从播放列表移除文件
   const removeFileFromPlaylist = (playlistId: string, fileId: string) => {
@@ -350,53 +337,6 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
     }
   };
 
-  // 文件上传处理
-  const handleFileUpload = async (files: FileList) => {
-    setIsUploading(true);
-    setUploadProgress(0);
-    
-    try {
-      const newFiles: MediaFile[] = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileType = getFileType(file.name);
-        
-        if (fileType === 'unknown') {
-          console.warn(`Unsupported file type: ${file.name}`);
-          continue;
-        }
-
-        const mediaFile: MediaFile = {
-          id: Date.now().toString() + i,
-          name: file.name,
-          url: URL.createObjectURL(file),
-          type: fileType,
-          size: file.size
-        };
-
-        newFiles.push(mediaFile);
-        setUploadProgress(((i + 1) / files.length) * 100);
-      }
-
-      // 添加到默认播放列表或创建新播放列表
-      if (playlists.length === 0) {
-        const defaultPlaylist = createPlaylist('默认播放列表');
-        newFiles.forEach(file => addFileToPlaylist(defaultPlaylist.id, file));
-        setCurrentPlaylist({ ...defaultPlaylist, files: newFiles });
-      } else {
-        const targetPlaylist = currentPlaylist || playlists[0];
-        newFiles.forEach(file => addFileToPlaylist(targetPlaylist.id, file));
-      }
-
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '文件上传失败');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
 
   // 音频可视化
   const initAudioVisualizer = () => {
@@ -509,7 +449,7 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
     if (playlists.length === 0 && (!ctx || !ctx.entry || !ctx.urls.downloadUrl)) {
       createPlaylist('默认播放列表');
     }
-  }, []);
+  }, [playlists.length, ctx]);
 
   // 清理资源
   useEffect(() => {
