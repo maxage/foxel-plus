@@ -4,7 +4,7 @@
   "description": "A comprehensive code viewer plugin for Foxel with syntax highlighting, preview, themes, and advanced features",
   "main": "dist/plugin.js",
   "scripts": {
-    "build": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"' --define:PLUGIN_VERSION='\"'$npm_package_version'\"' --define:PLUGIN_AUTHOR='\"'$npm_package_author'\"' --external:prismjs --external:marked --external:dompurify",
+    "build": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"' --define:PLUGIN_VERSION='\"'$npm_package_version'\"' --define:PLUGIN_AUTHOR='\"Jason\"' --external:prismjs --external:marked --external:dompurify",
     "dev": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --outfile=dist/plugin.js --watch",
     "clean": "rm -rf dist",
     "validate": "node validate-plugin.js"
