@@ -75,11 +75,6 @@ jobs:
           cd foxel-code-viewer
           npm ci
       
-      - name: 验证插件
-        run: |
-          cd foxel-code-viewer
-          npm run validate
-      
       - name: 自动提升版本号
         run: |
           cd foxel-code-viewer
@@ -106,6 +101,11 @@ jobs:
         run: |
           cd foxel-code-viewer
           npm run build
+      
+      - name: 验证插件
+        run: |
+          cd foxel-code-viewer
+          npm run validate
       
       - name: 生成发布说明
         id: release-notes
@@ -219,11 +219,6 @@ jobs:
           cd foxel-image-viewer
           npm ci
       
-      - name: 验证插件
-        run: |
-          cd foxel-image-viewer
-          npm run validate
-      
       - name: 自动提升版本号
         run: |
           cd foxel-image-viewer
@@ -250,6 +245,11 @@ jobs:
         run: |
           cd foxel-image-viewer
           npm run build
+      
+      - name: 验证插件
+        run: |
+          cd foxel-image-viewer
+          npm run validate
       
       - name: 生成发布说明
         id: release-notes
@@ -363,11 +363,6 @@ jobs:
           cd foxel-media-player
           npm ci
       
-      - name: 验证插件
-        run: |
-          cd foxel-media-player
-          npm run validate
-      
       - name: 自动提升版本号
         run: |
           cd foxel-media-player
@@ -394,6 +389,11 @@ jobs:
         run: |
           cd foxel-media-player
           npm run build
+      
+      - name: 验证插件
+        run: |
+          cd foxel-media-player
+          npm run validate
       
       - name: 生成发布说明
         id: release-notes
