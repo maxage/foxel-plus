@@ -51,16 +51,13 @@ jobs:
           echo "变更的插件: $CHANGED_PLUGINS"
           echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
 
-  build-and-release:
+  build-code-viewer:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.plugins != ''
+    if: contains(needs.detect-changes.outputs.plugins, 'foxel-code-viewer')
     permissions:
       contents: write
       pull-requests: read
-    strategy:
-      matrix:
-        plugin: ${{ split(needs.detect-changes.outputs.plugins, ',') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,21 +68,21 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.plugin }}/package-lock.json
+          cache-dependency-path: foxel-code-viewer/package-lock.json
       
       - name: 安装依赖
         run: |
-          cd ${{ matrix.plugin }}
+          cd foxel-code-viewer
           npm ci
       
       - name: 验证插件
         run: |
-          cd ${{ matrix.plugin }}
+          cd foxel-code-viewer
           npm run validate
       
       - name: 自动提升版本号
         run: |
-          cd ${{ matrix.plugin }}
+          cd foxel-code-viewer
           
           # 获取当前版本
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -107,23 +104,23 @@ jobs:
       
       - name: 构建插件
         run: |
-          cd ${{ matrix.plugin }}
+          cd foxel-code-viewer
           npm run build
       
       - name: 生成发布说明
         id: release-notes
         run: |
-          cd ${{ matrix.plugin }}
+          cd foxel-code-viewer
           
           # 获取上次发布的版本
-          LAST_TAG=$(git describe --tags --match="${{ matrix.plugin }}@*" --abbrev=0 2>/dev/null || echo "")
+          LAST_TAG=$(git describe --tags --match="foxel-code-viewer@*" --abbrev=0 2>/dev/null || echo "")
           
           if [ -z "$LAST_TAG" ]; then
             # 如果没有找到标签，从项目开始查找
-            COMMITS=$(git log --oneline --grep="^feat(${{ matrix.plugin }}):" --grep="^fix(${{ matrix.plugin }}):" --grep="^perf(${{ matrix.plugin }}):" --grep="^refactor(${{ matrix.plugin }}):" --grep="^style(${{ matrix.plugin }}):" --grep="^docs(${{ matrix.plugin }}):" --grep="^test(${{ matrix.plugin }}):" --grep="^chore(${{ matrix.plugin }}):" --since="1 year ago" --pretty=format:"%s")
+            COMMITS=$(git log --oneline --grep="^feat(foxel-code-viewer):" --grep="^fix(foxel-code-viewer):" --grep="^perf(foxel-code-viewer):" --grep="^refactor(foxel-code-viewer):" --grep="^style(foxel-code-viewer):" --grep="^docs(foxel-code-viewer):" --grep="^test(foxel-code-viewer):" --grep="^chore(foxel-code-viewer):" --since="1 year ago" --pretty=format:"%s")
           else
             # 从上次标签开始查找
-            COMMITS=$(git log --oneline $LAST_TAG..HEAD --grep="^feat(${{ matrix.plugin }}):" --grep="^fix(${{ matrix.plugin }}):" --grep="^perf(${{ matrix.plugin }}):" --grep="^refactor(${{ matrix.plugin }}):" --grep="^style(${{ matrix.plugin }}):" --grep="^docs(${{ matrix.plugin }}):" --grep="^test(${{ matrix.plugin }}):" --grep="^chore(${{ matrix.plugin }}):" --pretty=format:"%s")
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --grep="^feat(foxel-code-viewer):" --grep="^fix(foxel-code-viewer):" --grep="^perf(foxel-code-viewer):" --grep="^refactor(foxel-code-viewer):" --grep="^style(foxel-code-viewer):" --grep="^docs(foxel-code-viewer):" --grep="^test(foxel-code-viewer):" --grep="^chore(foxel-code-viewer):" --pretty=format:"%s")
           fi
           
           # 生成发布说明
@@ -180,10 +177,10 @@ jobs:
       - name: 创建 Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ matrix.plugin }}@${{ env.NEW_VERSION }}
-          name: ${{ matrix.plugin }} v${{ env.NEW_VERSION }}
+          tag_name: foxel-code-viewer@${{ env.NEW_VERSION }}
+          name: foxel-code-viewer v${{ env.NEW_VERSION }}
           body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
-          files: ./${{ matrix.plugin }}/dist/plugin.js
+          files: ./foxel-code-viewer/dist/plugin.js
           draft: false
           prerelease: false
         env:
@@ -191,9 +188,297 @@ jobs:
       
       - name: 复制到根目录
         run: |
-          cp ./${{ matrix.plugin }}/dist/plugin.js ./${{ matrix.plugin }}-plus.js
+          cp ./foxel-code-viewer/dist/plugin.js ./foxel-code-viewer-plus.js
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./${{ matrix.plugin }}-plus.js
-          git commit -m "chore: 更新 ${{ matrix.plugin }} 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git add ./foxel-code-viewer-plus.js
+          git commit -m "chore: 更新 foxel-code-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git push
+
+  build-image-viewer:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: contains(needs.detect-changes.outputs.plugins, 'foxel-image-viewer')
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: foxel-image-viewer/package-lock.json
+      
+      - name: 安装依赖
+        run: |
+          cd foxel-image-viewer
+          npm ci
+      
+      - name: 验证插件
+        run: |
+          cd foxel-image-viewer
+          npm run validate
+      
+      - name: 自动提升版本号
+        run: |
+          cd foxel-image-viewer
+          
+          # 获取当前版本
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "当前版本: $CURRENT_VERSION"
+          
+          # 提升 patch 版本
+          NEW_VERSION=$(node -p "
+            const version = '$CURRENT_VERSION';
+            const parts = version.split('.');
+            parts[2] = (parseInt(parts[2]) + 1).toString();
+            parts.join('.')
+          ")
+          echo "新版本: $NEW_VERSION"
+          
+          # 更新 package.json
+          npm version $NEW_VERSION --no-git-tag-version
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+      
+      - name: 构建插件
+        run: |
+          cd foxel-image-viewer
+          npm run build
+      
+      - name: 生成发布说明
+        id: release-notes
+        run: |
+          cd foxel-image-viewer
+          
+          # 获取上次发布的版本
+          LAST_TAG=$(git describe --tags --match="foxel-image-viewer@*" --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # 如果没有找到标签，从项目开始查找
+            COMMITS=$(git log --oneline --grep="^feat(foxel-image-viewer):" --grep="^fix(foxel-image-viewer):" --grep="^perf(foxel-image-viewer):" --grep="^refactor(foxel-image-viewer):" --grep="^style(foxel-image-viewer):" --grep="^docs(foxel-image-viewer):" --grep="^test(foxel-image-viewer):" --grep="^chore(foxel-image-viewer):" --since="1 year ago" --pretty=format:"%s")
+          else
+            # 从上次标签开始查找
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --grep="^feat(foxel-image-viewer):" --grep="^fix(foxel-image-viewer):" --grep="^perf(foxel-image-viewer):" --grep="^refactor(foxel-image-viewer):" --grep="^style(foxel-image-viewer):" --grep="^docs(foxel-image-viewer):" --grep="^test(foxel-image-viewer):" --grep="^chore(foxel-image-viewer):" --pretty=format:"%s")
+          fi
+          
+          # 生成发布说明
+          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" | while read -r commit; do
+              if [ -n "$commit" ]; then
+                # 提取提交类型和描述
+                TYPE=$(echo "$commit" | sed -n 's/^\([^(]*\)([^)]*):.*/\1/p')
+                DESC=$(echo "$commit" | sed -n 's/^[^(]*([^)]*): \(.*\)/\1/p')
+                
+                case "$TYPE" in
+                  "feat")
+                    RELEASE_NOTES="$RELEASE_NOTES- ✨ 新功能: $DESC\n"
+                    ;;
+                  "fix")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🐛 修复: $DESC\n"
+                    ;;
+                  "perf")
+                    RELEASE_NOTES="$RELEASE_NOTES- ⚡ 性能优化: $DESC\n"
+                    ;;
+                  "refactor")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔧 重构: $DESC\n"
+                    ;;
+                  "style")
+                    RELEASE_NOTES="$RELEASE_NOTES- 💄 样式更新: $DESC\n"
+                    ;;
+                  "docs")
+                    RELEASE_NOTES="$RELEASE_NOTES- 📚 文档更新: $DESC\n"
+                    ;;
+                  "test")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🧪 测试更新: $DESC\n"
+                    ;;
+                  "chore")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔨 构建更新: $DESC\n"
+                    ;;
+                  *)
+                    RELEASE_NOTES="$RELEASE_NOTES- 📝 其他: $DESC\n"
+                    ;;
+                esac
+              fi
+            done
+          else
+            RELEASE_NOTES="$RELEASE_NOTES- 📦 自动版本更新\n"
+          fi
+          
+          RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: foxel-image-viewer@${{ env.NEW_VERSION }}
+          name: foxel-image-viewer v${{ env.NEW_VERSION }}
+          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          files: ./foxel-image-viewer/dist/plugin.js
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 复制到根目录
+        run: |
+          cp ./foxel-image-viewer/dist/plugin.js ./foxel-image-viewer-plus.js
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./foxel-image-viewer-plus.js
+          git commit -m "chore: 更新 foxel-image-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git push
+
+  build-media-player:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: contains(needs.detect-changes.outputs.plugins, 'foxel-media-player')
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: foxel-media-player/package-lock.json
+      
+      - name: 安装依赖
+        run: |
+          cd foxel-media-player
+          npm ci
+      
+      - name: 验证插件
+        run: |
+          cd foxel-media-player
+          npm run validate
+      
+      - name: 自动提升版本号
+        run: |
+          cd foxel-media-player
+          
+          # 获取当前版本
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "当前版本: $CURRENT_VERSION"
+          
+          # 提升 patch 版本
+          NEW_VERSION=$(node -p "
+            const version = '$CURRENT_VERSION';
+            const parts = version.split('.');
+            parts[2] = (parseInt(parts[2]) + 1).toString();
+            parts.join('.')
+          ")
+          echo "新版本: $NEW_VERSION"
+          
+          # 更新 package.json
+          npm version $NEW_VERSION --no-git-tag-version
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+      
+      - name: 构建插件
+        run: |
+          cd foxel-media-player
+          npm run build
+      
+      - name: 生成发布说明
+        id: release-notes
+        run: |
+          cd foxel-media-player
+          
+          # 获取上次发布的版本
+          LAST_TAG=$(git describe --tags --match="foxel-media-player@*" --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # 如果没有找到标签，从项目开始查找
+            COMMITS=$(git log --oneline --grep="^feat(foxel-media-player):" --grep="^fix(foxel-media-player):" --grep="^perf(foxel-media-player):" --grep="^refactor(foxel-media-player):" --grep="^style(foxel-media-player):" --grep="^docs(foxel-media-player):" --grep="^test(foxel-media-player):" --grep="^chore(foxel-media-player):" --since="1 year ago" --pretty=format:"%s")
+          else
+            # 从上次标签开始查找
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --grep="^feat(foxel-media-player):" --grep="^fix(foxel-media-player):" --grep="^perf(foxel-media-player):" --grep="^refactor(foxel-media-player):" --grep="^style(foxel-media-player):" --grep="^docs(foxel-media-player):" --grep="^test(foxel-media-player):" --grep="^chore(foxel-media-player):" --pretty=format:"%s")
+          fi
+          
+          # 生成发布说明
+          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" | while read -r commit; do
+              if [ -n "$commit" ]; then
+                # 提取提交类型和描述
+                TYPE=$(echo "$commit" | sed -n 's/^\([^(]*\)([^)]*):.*/\1/p')
+                DESC=$(echo "$commit" | sed -n 's/^[^(]*([^)]*): \(.*\)/\1/p')
+                
+                case "$TYPE" in
+                  "feat")
+                    RELEASE_NOTES="$RELEASE_NOTES- ✨ 新功能: $DESC\n"
+                    ;;
+                  "fix")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🐛 修复: $DESC\n"
+                    ;;
+                  "perf")
+                    RELEASE_NOTES="$RELEASE_NOTES- ⚡ 性能优化: $DESC\n"
+                    ;;
+                  "refactor")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔧 重构: $DESC\n"
+                    ;;
+                  "style")
+                    RELEASE_NOTES="$RELEASE_NOTES- 💄 样式更新: $DESC\n"
+                    ;;
+                  "docs")
+                    RELEASE_NOTES="$RELEASE_NOTES- 📚 文档更新: $DESC\n"
+                    ;;
+                  "test")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🧪 测试更新: $DESC\n"
+                    ;;
+                  "chore")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔨 构建更新: $DESC\n"
+                    ;;
+                  *)
+                    RELEASE_NOTES="$RELEASE_NOTES- 📝 其他: $DESC\n"
+                    ;;
+                esac
+              fi
+            done
+          else
+            RELEASE_NOTES="$RELEASE_NOTES- 📦 自动版本更新\n"
+          fi
+          
+          RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: foxel-media-player@${{ env.NEW_VERSION }}
+          name: foxel-media-player v${{ env.NEW_VERSION }}
+          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          files: ./foxel-media-player/dist/plugin.js
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 复制到根目录
+        run: |
+          cp ./foxel-media-player/dist/plugin.js ./foxel-media-player-plus.js
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./foxel-media-player-plus.js
+          git commit -m "chore: 更新 foxel-media-player 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
           git push
