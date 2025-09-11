@@ -62,14 +62,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           type: fileType
         }]);
         setCurrentIndex(0);
-        
-        // 测试 URL 可访问性
-        testUrl(ctx.urls.downloadUrl).then(isAccessible => {
-          if (!isAccessible) {
-            setError('无法访问媒体文件，请检查网络连接或文件权限');
-          }
-          setIsLoading(false);
-        });
+        setIsLoading(false);
       } else {
         setError('不支持的文件格式');
         setIsLoading(false);
@@ -83,28 +76,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   // 当前媒体文件
   const currentFile = playlist[currentIndex];
 
-  // 测试 URL 是否可访问
-  const testUrl = async (url: string) => {
-    try {
-      console.log('测试 URL 可访问性:', url);
-      // 使用 GET 请求而不是 HEAD，因为 Foxel 服务器不支持 HEAD
-      const response = await fetch(url, { 
-        method: 'GET',
-        headers: {
-          'Range': 'bytes=0-1' // 只请求前2个字节，减少数据传输
-        }
-      });
-      console.log('URL 测试结果:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      return response.ok;
-    } catch (error) {
-      console.error('URL 测试失败:', error);
-      return false;
-    }
-  };
+  // 移除 URL 测试功能，直接让媒体元素处理加载
 
   // 播放/暂停
   const togglePlayPause = () => {
