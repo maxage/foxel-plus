@@ -31,7 +31,7 @@ jobs:
           # 检测变更的插件目录
           CHANGED_PLUGINS=""
           
-          for plugin_dir in foxel-*-plus; do
+          for plugin_dir in foxel-*; do
             if [ -d "$plugin_dir" ]; then
               # 检查插件目录是否有变更
               if git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -q "^$plugin_dir/"; then
