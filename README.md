@@ -14,7 +14,7 @@
 - 🔧 **完全自包含** - 单文件输出，无外部依赖
 - 🎨 **现代化 UI** - 基于 React 18 + TypeScript 构建
 - 📱 **响应式设计** - 适配各种屏幕尺寸
-- 🌙 **深色主题** - 护眼的深色界面设计
+- 🌙 **多主题支持** - 深色、浅色、海洋主题
 - ⚡ **高性能** - 基于 ESBuild 快速构建
 - 🔒 **类型安全** - 完整的 TypeScript 类型支持
 - 🛠️ **易于开发** - 完整的开发工具链和文档
@@ -29,115 +29,41 @@
 2. 下载所需的插件文件：
    - 图片查看器：`foxel-image-viewer-plus.js`
    - 代码编辑器：`foxel-code-editor-plus.js`
+   - 媒体播放器：`foxel-media-player-plus.js`
 3. 在 Foxel 的"应用"页面添加插件
 4. 输入对应的插件 URL：
    - 图片查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js`
    - 代码编辑器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-editor-plus.js`
+   - 媒体播放器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-media-player-plus.js`
 5. 安装完成后即可在文件管理器中查看对应文件类型
-
-### 📦 可用插件
-
-| 插件名称 | 描述 | 作者 | 下载链接 |
-|---------|------|------|----------|
-| **foxel-image-viewer-plus** | 功能强大的图片查看器 Plus，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js) |
-| **foxel-code-editor-plus** | 功能强大的代码编辑器 Plus，支持语法高亮、编辑、保存、主题切换、搜索、折叠、复制等丰富功能 | Foxel Plus Team @ maxage | [下载](https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-editor-plus.js) |
-
-#### 方法二：从源码构建
-
-```bash
-# 克隆仓库
-git clone https://github.com/maxage/foxel-plus.git
-cd foxel-plus
-
-# 构建图片查看器插件
-cd foxel-image-viewer
-npm install
-npm run build
-# 构建完成后，dist/plugin.js 就是可用的插件文件
-
-# 构建代码编辑器插件
-cd ../foxel-code-viewer
-npm install
-npm run build
-# 构建完成后，dist/plugin.js 就是可用的插件文件
-```
-
-### 🛠️ 开发环境设置
-
-#### 前置要求
-
-- Node.js 18+ 
-- npm 或 yarn
-- Git
-
-#### 本地开发
-
-```bash
-# 1. 克隆仓库
-git clone https://github.com/maxage/foxel-plus.git
-cd foxel-plus
-
-# 2. 安装所有插件依赖
-for plugin in foxel-*/; do
-  if [ -f "$plugin/package.json" ]; then
-    echo "Installing dependencies for $plugin..."
-    cd "$plugin"
-    npm install
-    cd ..
-  fi
-done
-
-# 3. 开发模式（监听文件变化）
-cd foxel-image-viewer
-npm run dev
-
-# 4. 生产构建
-npm run build
-```
 
 ## 📦 可用插件
 
-### 🖼️ 图片查看器 (foxel-image-viewer)
+### 🖼️ 图片查看器 Plus
 
-一个功能丰富的图片查看器插件，支持多种图片格式和操作。
+一个功能强大的图片查看器插件，支持多种图片格式和丰富的操作功能。
 
 | 属性 | 值 |
 |------|-----|
-| **版本** | v1.0.0 |
-| **文件大小** | ~145KB |
+| **版本** | v1.1.3 |
+| **文件大小** | ~152KB |
 | **支持格式** | JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF |
-| **技术栈** | React 18 + TypeScript + ESBuild |
+| **作者** | Jason |
+| **图标** | ![Image Icon](https://img.icons8.com/scribby/100/image.png) |
 
 #### ✨ 主要功能
 
 - 🔍 **智能缩放** - 鼠标滚轮缩放（10%-500%）
 - 🖱️ **拖拽移动** - 流畅的图片拖拽体验
+- 🔄 **旋转翻转** - 支持90度旋转和水平/垂直翻转
 - 🎛️ **工具栏控制** - 缩放、重置、适应屏幕、关闭
-- 🌙 **深色主题** - 护眼的现代化界面
+- 🌙 **多主题支持** - 深色、浅色、海洋主题
 - 📱 **响应式设计** - 适配各种屏幕尺寸
 - ⚡ **高性能** - 优化的渲染和交互体验
 - 🎨 **美观界面** - 简洁现代的 UI 设计
+- ⌨️ **键盘快捷键** - 支持常用快捷键操作
 
-#### 📥 安装方式
-
-```bash
-# 方式一：直接下载
-wget https://github.com/maxage/foxel-plus/raw/main/foxel-image-viewer.js
-
-# 方式二：从源码构建
-git clone https://github.com/maxage/foxel-plus.git
-cd foxel-plus/foxel-image-viewer
-npm install && npm run build
-```
-
-#### 🎮 使用说明
-
-1. 在 Foxel 文件管理器中找到图片文件
-2. 右键点击图片文件
-3. 选择"图片查看器"应用
-4. 享受图片查看体验！
-
-#### 🎯 操作指南
+#### 🎮 操作指南
 
 | 操作 | 说明 |
 |------|------|
@@ -148,13 +74,86 @@ npm install && npm run build
 
 ---
 
-### 🔮 即将推出
+### 💻 代码编辑器 Plus
 
-- 📹 **视频播放器** - 支持多种视频格式
-- 📄 **文档查看器** - PDF、Word、Excel 等
-- 🎵 **音频播放器** - 音乐播放和管理
-- 📦 **压缩包查看器** - ZIP、RAR 等压缩文件
-- 💻 **代码查看器** - 语法高亮的代码查看
+一个功能强大的代码编辑器插件，支持语法高亮、编辑、保存等丰富功能。
+
+| 属性 | 值 |
+|------|-----|
+| **版本** | v1.0.0 |
+| **文件大小** | ~173KB |
+| **支持格式** | JS, TS, JSX, TSX, HTML, CSS, SCSS, JSON, MD, TXT, PY, JAVA, C, CPP, GO, PHP, RB, SH, YAML, XML |
+| **作者** | Jason |
+| **图标** | ![Code Icon](https://img.icons8.com/cotton/100/source-code--v1.png) |
+
+#### ✨ 主要功能
+
+- 🎨 **语法高亮** - 支持多种编程语言语法高亮
+- ✏️ **代码编辑** - 完整的代码编辑功能
+- 💾 **文件保存** - 支持保存编辑后的文件
+- 🔍 **搜索替换** - 强大的搜索和替换功能
+- 📁 **文件管理** - 支持文件上传和下载
+- 🌙 **多主题支持** - 深色、浅色、海洋主题
+- 📱 **响应式设计** - 适配各种屏幕尺寸
+- ⌨️ **键盘快捷键** - 支持常用编辑器快捷键
+- 🔧 **代码折叠** - 支持代码块折叠
+- 📋 **复制粘贴** - 支持代码复制和粘贴
+
+#### 🎮 操作指南
+
+| 操作 | 说明 |
+|------|------|
+| **Ctrl+S** | 保存文件 |
+| **Ctrl+F** | 搜索 |
+| **Ctrl+H** | 替换 |
+| **Ctrl+Z** | 撤销 |
+| **Ctrl+Y** | 重做 |
+
+---
+
+### 🎵 媒体播放器 Plus
+
+一个功能齐全的音乐和视频播放管理工具，支持多种格式和丰富功能。
+
+| 属性 | 值 |
+|------|-----|
+| **版本** | v1.0.0 |
+| **文件大小** | ~162KB |
+| **支持格式** | MP3, WAV, FLAC, AAC, OGG, M4A, WMA, OPUS, MP4, AVI, MKV, MOV, WMV, FLV, WebM, M4V, 3GP, SRT, VTT, ASS, SSA, LRC, TXT |
+| **作者** | Jason |
+| **图标** | ![Media Icon](https://img.icons8.com/bubbles/100/circled-play.png) |
+
+#### ✨ 主要功能
+
+- 🎵 **多格式支持** - 支持音频和视频多种格式
+- 🎮 **播放控制** - 播放、暂停、停止、上一首、下一首
+- ⏪⏩ **快进快退** - 支持10秒快进快退
+- 🔊 **音量控制** - 音量调节、静音切换
+- ⚡ **播放速度** - 支持0.5x到2x的播放速度调节
+- 🔄 **循环模式** - 无循环、单曲循环、列表循环
+- 🎲 **随机播放** - 支持随机播放模式
+- 📁 **播放列表管理** - 支持创建和管理多个播放列表
+- 📤 **文件管理** - 拖拽上传文件、删除文件
+- 🎨 **音频可视化** - 实时音频频谱可视化效果
+- 📝 **歌词显示** - 支持LRC格式歌词文件显示
+- 🎬 **字幕支持** - 支持SRT、VTT、ASS、SSA字幕格式
+- 🌙 **多主题支持** - 深色、浅色、海洋主题
+- ⤢ **全屏播放** - 支持全屏播放模式
+- ⌨️ **键盘快捷键** - 丰富的快捷键支持
+
+#### 🎮 操作指南
+
+| 快捷键 | 功能 |
+|--------|------|
+| **空格键** | 播放/暂停 |
+| **←/→** | 快退/快进10秒 |
+| **↑/↓** | 音量调节 |
+| **M** | 静音切换 |
+| **F** | 全屏切换 |
+| **L** | 循环模式切换 |
+| **S** | 随机播放切换 |
+
+---
 
 ## 🛠️ 开发指南
 
@@ -188,7 +187,7 @@ foxel-your-plugin/
 ├── package.json         # 项目配置文件
 ├── tsconfig.json        # TypeScript 配置
 ├── foxel.d.ts          # Foxel 类型定义
-├── build.sh            # 构建脚本
+├── validate-plugin.js   # 插件验证脚本
 └── README.md           # 插件文档
 ```
 
@@ -204,11 +203,8 @@ npm run dev
 # 生产构建
 npm run build
 
-# 清理构建文件
-npm run clean
-
-# 使用构建脚本
-./build.sh
+# 验证插件
+npm run validate
 ```
 
 ### 📋 插件开发规范
@@ -226,7 +222,7 @@ npm run clean
 
 - [ ] 设置合适的 `supportedExts`
 - [ ] 提供清晰的 `name` 和 `description`
-- [ ] 添加 `icon`（建议使用 data URI）
+- [ ] 添加 `icon`（建议使用 Icons8 图标）
 - [ ] 设置合理的 `defaultBounds`
 - [ ] 输出 IIFE 格式单文件
 
@@ -239,10 +235,10 @@ const plugin: RegisteredPlugin = {
   name: '插件名称',
   version: '1.0.0',
   description: '插件描述',
-  author: 'Your Name',
+  author: 'Jason',
   supportedExts: ['jpg', 'png', 'gif'],
   defaultBounds: { width: 800, height: 600 },
-  icon: 'data:image/svg+xml;base64,...',
+  icon: 'https://img.icons8.com/...',
   
   mount: (container: HTMLElement, ctx: PluginMountCtx) => {
     // 插件挂载逻辑
@@ -262,13 +258,6 @@ const plugin: RegisteredPlugin = {
 | **TypeScript** | 5.5+ | 类型安全 |
 | **ESBuild** | 0.25+ | 构建工具 |
 | **Foxel API** | Latest | 插件接口 |
-
-### 📚 开发资源
-
-- [Foxel 插件开发指南](https://foxel.cc/guide/plugins-guide.html)
-- [React 官方文档](https://react.dev)
-- [TypeScript 手册](https://www.typescriptlang.org/docs/)
-- [ESBuild 文档](https://esbuild.github.io/)
 
 ## 🤝 贡献指南
 
@@ -341,77 +330,6 @@ git push origin feature/amazing-feature
 | `test` | 测试相关 | `test: add unit tests for image viewer` |
 | `chore` | 构建/工具 | `chore: update dependencies` |
 
-### 🔍 代码审查
-
-- 确保所有检查通过
-- 响应审查意见
-- 保持 PR 简洁，一次只做一件事
-- 添加必要的测试和文档
-
-## 🏗️ 项目架构
-
-### 📁 目录结构
-
-```
-foxel-plus/
-├── .github/                 # GitHub 配置
-│   ├── workflows/          # GitHub Actions
-│   ├── ISSUE_TEMPLATE/     # Issue 模板
-│   └── ...
-├── foxel-image-viewer/     # 图片查看器插件
-├── foxel-video-player/     # 视频播放器插件（计划中）
-├── .gitignore              # Git 忽略文件
-├── .gitattributes          # Git 属性配置
-├── README.md               # 项目说明
-├── CONTRIBUTING.md         # 贡献指南
-├── CHANGELOG.md            # 更新日志
-└── LICENSE                 # 许可证
-```
-
-### 🔄 工作流
-
-```mermaid
-graph LR
-    A[开发] --> B[测试]
-    B --> C[提交]
-    C --> D[CI/CD]
-    D --> E[构建]
-    E --> F[发布]
-    F --> G[部署]
-```
-
-### 🛠️ 技术选型
-
-| 层级 | 技术 | 选择理由 |
-|------|------|----------|
-| **UI 框架** | React 18 | 成熟稳定，生态丰富 |
-| **类型系统** | TypeScript | 类型安全，开发体验好 |
-| **构建工具** | ESBuild | 构建速度快，输出小 |
-| **包管理** | npm | 标准包管理器 |
-| **版本控制** | Git | 分布式版本控制 |
-| **CI/CD** | GitHub Actions | 与 GitHub 深度集成 |
-
-## 📚 相关资源
-
-### 🔗 官方链接
-
-- [Foxel 官网](https://foxel.cc) - 官方主页
-- [Foxel GitHub](https://github.com/DrizzleTime/Foxel) - 官方仓库
-- [插件开发指南](https://foxel.cc/guide/plugins-guide.html) - 详细开发文档
-
-### 🛠️ 技术文档
-
-- [React 官方文档](https://react.dev) - React 框架文档
-- [TypeScript 手册](https://www.typescriptlang.org/docs/) - TypeScript 类型系统
-- [ESBuild 文档](https://esbuild.github.io/) - 构建工具文档
-- [Conventional Commits](https://www.conventionalcommits.org/) - 提交信息规范
-
-### 🎯 学习资源
-
-- [Foxel 插件示例](https://github.com/DrizzleTime/foxel-text-viewer) - 官方文本查看器示例
-- [React 最佳实践](https://react.dev/learn) - React 学习指南
-- [TypeScript 入门](https://www.typescriptlang.org/docs/handbook/intro.html) - TypeScript 入门教程
-
 ## 🔄 自动发布
 
 本项目使用 GitHub Actions 实现自动构建和发布：
@@ -437,15 +355,6 @@ graph LR
 - **测试发布** - 使用 "Test Release" 工作流创建预发布版本
 - **版本控制** - 通过修改 `package.json` 中的版本号来管理版本
 
-### 📋 工作流说明
-
-| 工作流 | 触发条件 | 用途 |
-|--------|----------|------|
-| **Auto Release** | 插件文件变更 | 自动构建和发布正式版本 |
-| **Manual Release** | 手动触发 | 手动创建指定版本的发布 |
-| **Test Release** | 手动触发 | 创建测试版本用于验证 |
-| **CI** | 代码推送 | 代码质量检查和测试 |
-
 ## 📊 项目统计
 
 ![GitHub stars](https://img.shields.io/github/stars/maxage/foxel-plus?style=social)
@@ -453,6 +362,27 @@ graph LR
 ![GitHub issues](https://img.shields.io/github/issues/maxage/foxel-plus)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/maxage/foxel-plus)
 ![GitHub last commit](https://img.shields.io/github/last-commit/maxage/foxel-plus)
+
+## 📚 相关资源
+
+### 🔗 官方链接
+
+- [Foxel 官网](https://foxel.cc) - 官方主页
+- [Foxel GitHub](https://github.com/DrizzleTime/Foxel) - 官方仓库
+- [插件开发指南](https://foxel.cc/guide/plugins-guide.html) - 详细开发文档
+
+### 🛠️ 技术文档
+
+- [React 官方文档](https://react.dev) - React 框架文档
+- [TypeScript 手册](https://www.typescriptlang.org/docs/) - TypeScript 类型系统
+- [ESBuild 文档](https://esbuild.github.io/) - 构建工具文档
+- [Conventional Commits](https://www.conventionalcommits.org/) - 提交信息规范
+
+### 🎯 学习资源
+
+- [Foxel 插件示例](https://github.com/DrizzleTime/foxel-text-viewer) - 官方文本查看器示例
+- [React 最佳实践](https://react.dev/learn) - React 学习指南
+- [TypeScript 入门](https://www.typescriptlang.org/docs/handbook/intro.html) - TypeScript 入门教程
 
 ## 📄 许可证
 
@@ -491,6 +421,7 @@ SOFTWARE.
 - [TypeScript](https://www.typescriptlang.org) - 类型安全的 JavaScript
 - [ESBuild](https://esbuild.github.io) - 极速的构建工具
 - [GitHub](https://github.com) - 代码托管和 CI/CD 平台
+- [Icons8](https://icons8.com) - 提供精美的图标资源
 
 ## 🎉 支持我们
 
