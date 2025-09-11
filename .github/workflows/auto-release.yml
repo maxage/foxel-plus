@@ -75,27 +75,13 @@ jobs:
           cd foxel-code-viewer
           npm ci
       
-      - name: 自动提升版本号
+      - name: 设置固定版本
         run: |
           cd foxel-code-viewer
           
-          # 获取当前版本
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "当前版本: $CURRENT_VERSION"
-          
-          # 提升 patch 版本
-          NEW_VERSION=$(node -p "
-            const version = '$CURRENT_VERSION';
-            const parts = version.split('.');
-            parts[2] = (parseInt(parts[2]) + 1).toString();
-            parts.join('.')
-          ")
-          echo "新版本: $NEW_VERSION"
-          
-          # 更新 package.json
-          npm version $NEW_VERSION --no-git-tag-version
-          
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          # 设置固定版本为 latest
+          echo "设置版本为: latest"
+          echo "NEW_VERSION=latest" >> $GITHUB_ENV
       
       - name: 构建插件
         run: |
@@ -124,7 +110,7 @@ jobs:
           fi
           
           # 生成发布说明
-          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          RELEASE_NOTES="## 🚀 最新版本更新内容\n\n"
           
           if [ -n "$COMMITS" ]; then
             echo "$COMMITS" | while read -r commit; do
@@ -177,8 +163,8 @@ jobs:
       - name: 创建 Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: foxel-code-viewer@${{ env.NEW_VERSION }}
-          name: foxel-code-viewer v${{ env.NEW_VERSION }}
+          tag_name: foxel-code-viewer@latest
+          name: foxel-code-viewer latest
           body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-code-viewer/dist/plugin.js
           draft: false
@@ -192,7 +178,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./foxel-code-viewer.js
-          git commit -m "chore: 更新 foxel-code-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git commit -m "chore: 更新 foxel-code-viewer 构建产物到 latest" || exit 0
           git pull --rebase origin main
           git push origin main
 
@@ -220,27 +206,13 @@ jobs:
           cd foxel-image-viewer
           npm ci
       
-      - name: 自动提升版本号
+      - name: 设置固定版本
         run: |
           cd foxel-image-viewer
           
-          # 获取当前版本
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "当前版本: $CURRENT_VERSION"
-          
-          # 提升 patch 版本
-          NEW_VERSION=$(node -p "
-            const version = '$CURRENT_VERSION';
-            const parts = version.split('.');
-            parts[2] = (parseInt(parts[2]) + 1).toString();
-            parts.join('.')
-          ")
-          echo "新版本: $NEW_VERSION"
-          
-          # 更新 package.json
-          npm version $NEW_VERSION --no-git-tag-version
-          
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          # 设置固定版本为 latest
+          echo "设置版本为: latest"
+          echo "NEW_VERSION=latest" >> $GITHUB_ENV
       
       - name: 构建插件
         run: |
@@ -269,7 +241,7 @@ jobs:
           fi
           
           # 生成发布说明
-          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          RELEASE_NOTES="## 🚀 最新版本更新内容\n\n"
           
           if [ -n "$COMMITS" ]; then
             echo "$COMMITS" | while read -r commit; do
@@ -322,8 +294,8 @@ jobs:
       - name: 创建 Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: foxel-image-viewer@${{ env.NEW_VERSION }}
-          name: foxel-image-viewer v${{ env.NEW_VERSION }}
+          tag_name: foxel-image-viewer@latest
+          name: foxel-image-viewer latest
           body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-image-viewer/dist/plugin.js
           draft: false
@@ -337,7 +309,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./foxel-image-viewer.js
-          git commit -m "chore: 更新 foxel-image-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git commit -m "chore: 更新 foxel-image-viewer 构建产物到 latest" || exit 0
           git pull --rebase origin main
           git push origin main
 
@@ -365,27 +337,13 @@ jobs:
           cd foxel-media-player
           npm ci
       
-      - name: 自动提升版本号
+      - name: 设置固定版本
         run: |
           cd foxel-media-player
           
-          # 获取当前版本
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "当前版本: $CURRENT_VERSION"
-          
-          # 提升 patch 版本
-          NEW_VERSION=$(node -p "
-            const version = '$CURRENT_VERSION';
-            const parts = version.split('.');
-            parts[2] = (parseInt(parts[2]) + 1).toString();
-            parts.join('.')
-          ")
-          echo "新版本: $NEW_VERSION"
-          
-          # 更新 package.json
-          npm version $NEW_VERSION --no-git-tag-version
-          
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          # 设置固定版本为 latest
+          echo "设置版本为: latest"
+          echo "NEW_VERSION=latest" >> $GITHUB_ENV
       
       - name: 构建插件
         run: |
@@ -414,7 +372,7 @@ jobs:
           fi
           
           # 生成发布说明
-          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          RELEASE_NOTES="## 🚀 最新版本更新内容\n\n"
           
           if [ -n "$COMMITS" ]; then
             echo "$COMMITS" | while read -r commit; do
@@ -467,8 +425,8 @@ jobs:
       - name: 创建 Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: foxel-media-player@${{ env.NEW_VERSION }}
-          name: foxel-media-player v${{ env.NEW_VERSION }}
+          tag_name: foxel-media-player@latest
+          name: foxel-media-player latest
           body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-media-player/dist/plugin.js
           draft: false
@@ -482,6 +440,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./foxel-media-player.js
-          git commit -m "chore: 更新 foxel-media-player 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git commit -m "chore: 更新 foxel-media-player 构建产物到 latest" || exit 0
           git pull --rebase origin main
           git push origin main
