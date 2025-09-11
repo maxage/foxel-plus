@@ -29,20 +29,25 @@ jobs:
           echo "Current commit: ${{ github.sha }}"
           
           # 检测变更的插件目录
-          CHANGED_PLUGINS=""
+          CHANGED_PLUGINS="["
+          FIRST=true
           
           for plugin_dir in foxel-*; do
             if [ -d "$plugin_dir" ]; then
               # 检查插件目录是否有变更
               if git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -q "^$plugin_dir/"; then
                 echo "检测到插件变更: $plugin_dir"
-                CHANGED_PLUGINS="$CHANGED_PLUGINS$plugin_dir,"
+                if [ "$FIRST" = true ]; then
+                  CHANGED_PLUGINS="$CHANGED_PLUGINS\"$plugin_dir\""
+                  FIRST=false
+                else
+                  CHANGED_PLUGINS="$CHANGED_PLUGINS,\"$plugin_dir\""
+                fi
               fi
             fi
           done
           
-          # 移除最后的逗号
-          CHANGED_PLUGINS=${CHANGED_PLUGINS%,}
+          CHANGED_PLUGINS="$CHANGED_PLUGINS]"
           
           echo "变更的插件: $CHANGED_PLUGINS"
           echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
@@ -56,7 +61,7 @@ jobs:
       pull-requests: read
     strategy:
       matrix:
-        plugin: ${{ fromJson(format('["{0}"]', needs.detect-changes.outputs.plugins)) }}
+        plugin: ${{ fromJson(needs.detect-changes.outputs.plugins) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,6 +72,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: ${{ matrix.plugin }}/package-lock.json
       
       - name: 安装依赖
         run: |
