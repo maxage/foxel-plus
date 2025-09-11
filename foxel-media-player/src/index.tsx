@@ -9,32 +9,31 @@ let root: any = null;
 const VERSION = '1.0.0';
 
 const plugin: RegisteredPlugin = {
-  key: 'com.foxel-plus.code-editor-plus',
-  name: '代码编辑器 Plus',
+  key: 'com.foxel-plus.media-player-plus',
+  name: '媒体播放器 Plus',
   version: VERSION,
-  description: '功能强大的代码编辑器插件，支持语法高亮、主题切换、搜索、编辑、保存、折叠、复制等丰富功能',
+  description: '功能强大的媒体播放器插件，支持音频/视频播放、播放列表管理、歌词显示、音频可视化、多种主题等丰富功能',
   author: 'Jason',
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',
   supportedExts: [
-    'js', 'jsx', 'ts', 'tsx', 'vue', 'svelte',
-    'html', 'htm', 'xml', 'css', 'scss', 'sass', 'less',
-    'json', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
-    'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'php',
-    'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'clj',
-    'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat',
-    'sql', 'md', 'txt', 'log', 'diff', 'patch',
-    'dockerfile', 'makefile', 'cmake', 'gradle',
-    'xml', 'svg', 'graphql', 'gql'
+    // 音频格式
+    'mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'opus',
+    // 视频格式
+    'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp',
+    // 字幕格式
+    'srt', 'vtt', 'ass', 'ssa',
+    // 歌词格式
+    'lrc', 'txt'
   ],
   defaultBounds: {
     x: 100,
     y: 100,
-    width: 1000,
-    height: 700
+    width: 1200,
+    height: 800
   },
   defaultMaximized: false,
-  icon: 'https://img.icons8.com/cotton/100/source-code--v1.png',
+  icon: 'https://img.icons8.com/bubbles/100/circled-play.png',
 
   mount: (container: HTMLElement, ctx) => {
     try {
@@ -44,7 +43,7 @@ const plugin: RegisteredPlugin = {
       root = createRoot(container);
       root.render(<App ctx={ctx} />);
     } catch (error) {
-      console.error('Foxel Code Viewer Plus mount error:', error);
+      console.error('Foxel Media Player Plus mount error:', error);
     }
   },
 

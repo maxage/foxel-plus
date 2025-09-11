@@ -13,7 +13,7 @@ const plugin: RegisteredPlugin = {
   name: '图片查看器 Plus',
   version: VERSION,
   description: '功能强大的图片查看器插件，支持缩放、拖拽、旋转、翻转、全屏、键盘快捷键等丰富功能',
-  author: 'Foxel Plus Team @ maxage',
+  author: 'Jason',
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',
   supportedExts: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tiff', 'tif'],
@@ -24,7 +24,7 @@ const plugin: RegisteredPlugin = {
     height: 600
   },
   defaultMaximized: false,
-  icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkgMTJMMTEgMTRMMTUgMTBMMjEgMTZWMThIM1YxNkw5IDEyWiIgZmlsbD0iIzMzMzMzMyIvPgo8cGF0aCBkPSJNMyA2SDE5VjEwSDNWNloiIGZpbGw9IiMzMzMzMzMiLz4KPHBhdGggZD0iTTMgMTRIMTlWMTZIM1YxNFoiIGZpbGw9IiMzMzMzMzMiLz4KPC9zdmc+',
+  icon: 'https://img.icons8.com/scribby/100/image.png',
   
   mount: (container: HTMLElement, ctx) => {
     try {
