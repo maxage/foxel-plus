@@ -27,25 +27,25 @@
 
 1. 访问 [Releases 页面](https://github.com/maxage/foxel-plus/releases/latest)
 2. 下载所需的插件文件：
-   - 图片查看器：`foxel-image-viewer-plus.js`
-   - 代码编辑器：`foxel-code-editor-plus.js`
-   - 媒体播放器：`foxel-media-player-plus.js`
+   - 图片查看器：`foxel-image-viewer.js`
+   - 代码查看器：`foxel-code-viewer.js`
+   - 媒体播放器：`foxel-media-player.js`
 3. 在 Foxel 的"应用"页面添加插件
 4. 输入对应的插件 URL：
-   - 图片查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer-plus.js`
-   - 代码编辑器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-editor-plus.js`
-   - 媒体播放器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-media-player-plus.js`
+   - 图片查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js`
+   - 代码查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-viewer.js`
+   - 媒体播放器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-media-player.js`
 5. 安装完成后即可在文件管理器中查看对应文件类型
 
 ## 📦 可用插件
 
-### 🖼️ 图片查看器 Plus
+### 🖼️ 图片查看器
 
 一个功能强大的图片查看器插件，支持多种图片格式和丰富的操作功能。
 
 | 属性 | 值 |
 |------|-----|
-| **版本** | v1.1.3 |
+| **版本** | v1.0.0 |
 | **文件大小** | ~158KB |
 | **支持格式** | JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF |
 | **作者** | Jason |
@@ -78,14 +78,14 @@
 
 ---
 
-### 💻 代码查看器 Plus
+### 💻 代码查看器
 
 一个功能强大的代码查看器插件，支持语法高亮、预览、主题切换等丰富功能。
 
 | 属性 | 值 |
 |------|-----|
 | **版本** | v1.0.0 |
-| **文件大小** | ~175KB |
+| **文件大小** | ~159KB |
 | **支持格式** | JS, TS, JSX, TSX, HTML, CSS, SCSS, JSON, MD, TXT, PY, JAVA, C, CPP, GO, PHP, RB, SH, YAML, XML |
 | **作者** | Jason |
 | **图标** | ![Code Icon](https://img.icons8.com/cotton/100/source-code--v1.png) |
@@ -116,7 +116,7 @@
 
 ---
 
-### 🎵 媒体播放器 Plus
+### 🎵 媒体播放器
 
 一个功能强大的媒体播放器插件，支持音频和视频播放，完全符合 Foxel 规范。
 
