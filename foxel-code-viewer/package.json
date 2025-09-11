@@ -1,6 +1,6 @@
 {
   "name": "foxel-code-viewer-plus",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "A comprehensive code viewer plugin for Foxel with syntax highlighting, preview, themes, and advanced features",
   "main": "dist/plugin.js",
   "scripts": {
