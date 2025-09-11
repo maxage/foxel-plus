@@ -49,7 +49,68 @@ feat(foxel-code-editor-plus): 增加 Markdown 预览功能
 fix(foxel-image-viewer-plus): 修复了查看 SVG 文件时崩溃的问题
 ```
 
-## 3. 插件生命周期
+## 3. 项目结构规范
+
+### 3.1 插件文件夹命名规范
+
+**所有插件文件夹必须遵循统一的命名格式：`foxel-<功能名>-plus`**
+
+#### 命名规则
+- 格式：`foxel-<功能名>-plus`
+- 功能名使用小写字母和连字符
+- 必须以 `-plus` 结尾，表示这是增强版插件
+
+#### 示例
+```
+✅ 正确格式：
+foxel-code-viewer-plus
+foxel-image-viewer-plus
+foxel-media-player-plus
+
+❌ 错误格式：
+foxel-code-viewer
+foxel-image-viewer
+foxel-media-player
+```
+
+#### 重命名影响
+- 插件文件夹重命名后，需要更新：
+  - CI 工作流中的插件检测逻辑
+  - 根目录的 JS 文件名称
+  - README.md 中的引用
+
+### 3.2 GitHub Actions 权限规范
+
+**所有需要创建 Release 的工作流都必须配置正确的权限**
+
+#### 必需权限配置
+```yaml
+permissions:
+  contents: write    # 允许创建和修改 release
+  pull-requests: read # 允许读取 PR 信息（用于生成发布说明）
+```
+
+#### 权限配置位置
+- 在需要创建 release 的 job 级别配置
+- 不要在工作流级别配置，避免过度授权
+
+#### 示例
+```yaml
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      # ... 构建和发布步骤
+```
+
+#### 常见权限问题
+- `Resource not accessible by integration`：缺少 `contents: write` 权限
+- 无法读取 PR 信息：缺少 `pull-requests: read` 权限
+
+## 4. 插件生命周期
 
 插件的生命周期由 Foxel 主程序管理，主要包含 `mount` 和 `unmount` 两个阶段。
 
