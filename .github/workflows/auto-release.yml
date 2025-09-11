@@ -51,6 +51,9 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.plugins != ''
+    permissions:
+      contents: write
+      pull-requests: read
     strategy:
       matrix:
         plugin: ${{ fromJson(format('["{0}"]', needs.detect-changes.outputs.plugins)) }}
@@ -171,25 +174,16 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
       
       - name: 创建 Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ matrix.plugin }}@${{ env.NEW_VERSION }}
-          release_name: ${{ matrix.plugin }} v${{ env.NEW_VERSION }}
+          name: ${{ matrix.plugin }} v${{ env.NEW_VERSION }}
           body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          files: ./${{ matrix.plugin }}/dist/plugin.js
           draft: false
           prerelease: false
-      
-      - name: 上传构建产物
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ matrix.plugin }}/dist/plugin.js
-          asset_name: plugin.js
-          asset_content_type: application/javascript
       
       - name: 复制到根目录
         run: |
