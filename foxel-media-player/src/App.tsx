@@ -87,7 +87,13 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const testUrl = async (url: string) => {
     try {
       console.log('测试 URL 可访问性:', url);
-      const response = await fetch(url, { method: 'HEAD' });
+      // 使用 GET 请求而不是 HEAD，因为 Foxel 服务器不支持 HEAD
+      const response = await fetch(url, { 
+        method: 'GET',
+        headers: {
+          'Range': 'bytes=0-1' // 只请求前2个字节，减少数据传输
+        }
+      });
       console.log('URL 测试结果:', {
         status: response.status,
         statusText: response.statusText,
