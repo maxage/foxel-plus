@@ -79,16 +79,17 @@ checks.forEach(check => {
 // 检查 App 组件
 console.log('\n🎨 检查 App 组件:');
 const appContent = fs.readFileSync('src/App.tsx', 'utf8');
+const useCodeViewerContent = fs.readFileSync('src/hooks/useCodeViewer.ts', 'utf8');
 
 const appChecks = [
-  { name: '使用 downloadUrl', pattern: /ctx\.urls\.downloadUrl/ },
-  { name: '使用 host.close', pattern: /ctx\.host\.close/ },
-  { name: '使用唯一 CSS ID', pattern: /id="foxel-code-viewer-plus"/ },
-  { name: '操作 container 节点', pattern: /containerRef/ }
+  { name: '使用 downloadUrl', pattern: /ctx\.urls\.downloadUrl/, content: useCodeViewerContent },
+  { name: '使用 host.close', pattern: /ctx\.host\.close/, content: appContent },
+  { name: '使用唯一 CSS ID', pattern: /id="foxel-code-editor-plus"/, content: appContent },
+  { name: '操作 container 节点', pattern: /containerRef/, content: appContent }
 ];
 
 appChecks.forEach(check => {
-  if (check.pattern.test(appContent)) {
+  if (check.pattern.test(check.content)) {
     console.log(`  ✅ ${check.name}`);
   } else {
     console.log(`  ❌ ${check.name}`);
