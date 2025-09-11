@@ -67,7 +67,6 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: ${{ matrix.plugin }}/package-lock.json
       
       - name: 安装依赖
         run: |
