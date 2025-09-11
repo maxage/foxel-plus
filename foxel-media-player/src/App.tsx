@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PluginMountCtx } from '../foxel.d';
 
+interface AppProps {
+  ctx: PluginMountCtx;
+}
+
 // 媒体文件类型定义
 interface MediaFile {
   id: string;
@@ -137,6 +141,59 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
 
+  // 处理从Foxel传递过来的文件
+  useEffect(() => {
+    if (ctx && ctx.entry && ctx.urls.downloadUrl) {
+      const fileName = ctx.entry.name;
+      const fileUrl = ctx.urls.downloadUrl;
+      const fileSize = ctx.entry.size;
+      const fileType = getFileType(fileName);
+      
+      if (fileType !== 'unknown') {
+        // 创建媒体文件对象
+        const mediaFile: MediaFile = {
+          id: `foxel-${Date.now()}`,
+          name: fileName,
+          url: fileUrl,
+          type: fileType,
+          size: fileSize
+        };
+        
+        // 添加到默认播放列表
+        setPlaylists(prev => {
+          const defaultPlaylist = prev.find(p => p.name === '默认播放列表') || {
+            id: 'default',
+            name: '默认播放列表',
+            files: [],
+            currentIndex: 0
+          };
+          
+          const updatedPlaylist = {
+            ...defaultPlaylist,
+            files: [...defaultPlaylist.files, mediaFile],
+            currentIndex: defaultPlaylist.files.length
+          };
+          
+          const otherPlaylists = prev.filter(p => p.name !== '默认播放列表');
+          return [...otherPlaylists, updatedPlaylist];
+        });
+        
+        // 设置为当前文件
+        setCurrentFile(mediaFile);
+        setCurrentPlaylist(prev => prev || {
+          id: 'default',
+          name: '默认播放列表',
+          files: [mediaFile],
+          currentIndex: 0
+        });
+        
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  }, [ctx]);
+
   // 检测文件类型
   const getFileType = (filename: string): 'audio' | 'video' | 'unknown' => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -203,6 +260,14 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
   // 播放文件
   const playFile = (file: MediaFile) => {
     setCurrentFile(file);
+    
+    // 设置媒体元素的src属性
+    if (file.type === 'video' && videoRef.current) {
+      videoRef.current.src = file.url;
+    } else if (file.type === 'audio' && audioRef.current) {
+      audioRef.current.src = file.url;
+    }
+    
     setPlaybackState(prev => ({ ...prev, isPlaying: true }));
   };
 
@@ -440,10 +505,8 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
 
   // 初始化
   useEffect(() => {
-    setLoading(false);
-    
-    // 创建默认播放列表
-    if (playlists.length === 0) {
+    // 只有在没有从Foxel传入文件时才创建默认播放列表
+    if (playlists.length === 0 && (!ctx || !ctx.entry || !ctx.urls.downloadUrl)) {
       createPlaylist('默认播放列表');
     }
   }, []);
@@ -1109,6 +1172,7 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
       {/* 音频元素 */}
       <audio
         ref={audioRef}
+        src={currentFile?.type === 'audio' ? currentFile.url : ''}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
