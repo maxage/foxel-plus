@@ -22,19 +22,20 @@ export interface RegisteredPlugin {
 }
 
 export interface PluginMountCtx {
+  filePath: string;
   entry: {
     name: string;
-    path: string;
+    is_dir: boolean;
     size: number;
-    isDirectory: boolean;
+    mtime: number;
+    type?: string;
+    is_image?: boolean;
   };
   urls: {
     downloadUrl: string;
   };
   host: {
     close: () => void;
-    saveFile?: (content: string) => Promise<void>;
-    uploadFile?: (blob: Blob, filename: string) => Promise<void>;
   };
 }
 

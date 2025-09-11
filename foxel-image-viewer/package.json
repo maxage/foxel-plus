@@ -4,7 +4,7 @@
   "description": "A powerful image viewer plugin for Foxel with advanced features",
   "main": "dist/plugin.js",
   "scripts": {
-    "build": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let content = fs.readFileSync('src/index.tsx', 'utf8'); content = content.replace(/const VERSION = '[^']*';/, \\`const VERSION = '\\${pkg.version}';\\`); content = content.replace(/author: '[^']*'/, \\`author: '\\${pkg.author}'\\`); fs.writeFileSync('src/index.tsx', content);\" && esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"'",
+    "build": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --minify --outfile=dist/plugin.js --define:process.env.NODE_ENV='\"production\"' --define:PLUGIN_VERSION='\"'$npm_package_version'\"' --define:PLUGIN_AUTHOR='\"'$npm_package_author'\"'",
     "dev": "esbuild src/index.tsx --bundle --format=iife --platform=browser --target=es2019 --jsx=automatic --outfile=dist/plugin.js --watch",
     "clean": "rm -rf dist",
     "validate": "node validate-plugin.js",

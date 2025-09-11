@@ -1,223 +1,156 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PluginMountCtx } from '../foxel.d';
 
 interface AppProps {
   ctx: PluginMountCtx;
 }
 
-// 媒体文件类型定义
-interface MediaFile {
-  id: string;
-  name: string;
-  url: string;
-  type: 'audio' | 'video';
-  size: number;
-  duration?: number;
-  thumbnail?: string;
-  artist?: string;
-  album?: string;
-  year?: number;
-  genre?: string;
-  lyrics?: string;
-  subtitles?: Array<{
-    language: string;
-    url: string;
-    format: 'srt' | 'vtt' | 'ass' | 'ssa';
-  }>;
-}
-
-// 播放列表类型定义
-interface Playlist {
-  id: string;
-  name: string;
-  files: MediaFile[];
-  currentIndex: number;
-}
-
-// 播放状态类型定义
-interface PlaybackState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  isMuted: boolean;
-  playbackRate: number;
-  isShuffled: boolean;
-  repeatMode: 'none' | 'one' | 'all';
-}
-
-// 主题类型定义
-interface Theme {
-  name: string;
-  primary: string;
-  secondary: string;
-  background: string;
-  surface: string;
-  text: string;
-  textSecondary: string;
-  accent: string;
-  error: string;
-  success: string;
-  warning: string;
-}
-
-const themes: Theme[] = [
-  {
-    name: 'Dark',
-    primary: '#bb86fc',
-    secondary: '#03dac6',
-    background: '#121212',
-    surface: '#1e1e1e',
-    text: '#ffffff',
-    textSecondary: '#b3b3b3',
-    accent: '#ff6b6b',
-    error: '#cf6679',
-    success: '#4caf50',
-    warning: '#ff9800'
-  },
-  {
-    name: 'Light',
-    primary: '#6200ea',
-    secondary: '#018786',
-    background: '#ffffff',
-    surface: '#f5f5f5',
-    text: '#000000',
-    textSecondary: '#666666',
-    accent: '#e91e63',
-    error: '#f44336',
-    success: '#4caf50',
-    warning: '#ff9800'
-  },
-  {
-    name: 'Ocean',
-    primary: '#2196f3',
-    secondary: '#00bcd4',
-    background: '#0d1117',
-    surface: '#161b22',
-    text: '#f0f6fc',
-    textSecondary: '#8b949e',
-    accent: '#ff6b6b',
-    error: '#f85149',
-    success: '#3fb950',
-    warning: '#d29922'
-  }
-];
-
-const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
-  // 状态管理
-  const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
-  const [currentFile, setCurrentFile] = useState<MediaFile | null>(null);
-  const [playbackState, setPlaybackState] = useState<PlaybackState>({
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    volume: 0.8,
-    isMuted: false,
-    playbackRate: 1,
-    isShuffled: false,
-    repeatMode: 'none'
-  });
-  const [showPlaylist, setShowPlaylist] = useState<boolean>(true);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showLyrics, setShowLyrics] = useState<boolean>(false);
-  const [showVisualizer, setShowVisualizer] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-
-  // Refs
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(null);
-
-  // 音频可视化相关
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+const App: React.FC<AppProps> = ({ ctx }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [mediaType, setMediaType] = useState<'audio' | 'video' | null>(null);
+  const [showPlaylist, setShowPlaylist] = useState(false);
+  const [playlist, setPlaylist] = useState<Array<{id: string, name: string, url: string, type: 'audio' | 'video'}>>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
+  const controlsTimeoutRef = useRef<number | null>(null);
 
   // 检测文件类型
-  const getFileType = (filename: string): 'audio' | 'video' | 'unknown' => {
+  const getFileType = (filename: string): 'audio' | 'video' | null => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const audioExts = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'opus'];
     const videoExts = ['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp'];
     
     if (audioExts.includes(ext)) return 'audio';
     if (videoExts.includes(ext)) return 'video';
-    return 'unknown';
+    return null;
   };
 
-  // 处理从Foxel传递过来的文件
+  // 初始化媒体文件
   useEffect(() => {
-    console.log('Foxel Media Player: useEffect 触发', { ctx, entry: ctx?.entry, downloadUrl: ctx?.urls?.downloadUrl });
-    
-    if (ctx && ctx.entry && ctx.urls.downloadUrl) {
-      const fileName = ctx.entry.name;
-      const fileUrl = ctx.urls.downloadUrl;
-      const fileSize = ctx.entry.size;
+    if (ctx && ctx.filePath && ctx.urls.downloadUrl) {
+      const fileName = ctx.filePath.split('/').pop() || '';
       const fileType = getFileType(fileName);
       
-      console.log('Foxel Media Player: 接收到文件', { fileName, fileUrl, fileSize, fileType });
-      
-      if (fileType !== 'unknown') {
-        // 创建媒体文件对象
-        const mediaFile: MediaFile = {
-          id: `foxel-${Date.now()}`,
+      if (fileType) {
+        setMediaType(fileType);
+        setPlaylist([{
+          id: 'current',
           name: fileName,
-          url: fileUrl,
-          type: fileType,
-          size: fileSize
-        };
-        
-        console.log('Foxel Media Player: 创建媒体文件对象', mediaFile);
-        
-        // 直接设置为当前文件
-        setCurrentFile(mediaFile);
-        setLoading(false);
-        
-        console.log('Foxel Media Player: 已设置currentFile', mediaFile);
+          url: ctx.urls.downloadUrl,
+          type: fileType
+        }]);
+        setCurrentIndex(0);
+        setIsLoading(false);
       } else {
-        console.log('Foxel Media Player: 不支持的文件类型', fileName);
-        setLoading(false);
+        setError('不支持的文件格式');
+        setIsLoading(false);
       }
     } else {
-      console.log('Foxel Media Player: 没有接收到文件信息', { 
-        hasCtx: !!ctx, 
-        hasEntry: !!ctx?.entry, 
-        hasDownloadUrl: !!ctx?.urls?.downloadUrl,
-        ctx: ctx
-      });
-      setLoading(false);
+      setError('无法加载媒体文件');
+      setIsLoading(false);
     }
   }, [ctx]);
 
-  // 当currentFile变化时自动开始播放
-  useEffect(() => {
-    if (currentFile) {
-      console.log('Foxel Media Player: 开始播放文件', currentFile);
-      
-      // 设置媒体元素的src属性
-      if (currentFile.type === 'video' && videoRef.current) {
-        videoRef.current.src = currentFile.url;
-        videoRef.current.load(); // 重新加载视频
-      } else if (currentFile.type === 'audio' && audioRef.current) {
-        audioRef.current.src = currentFile.url;
-        audioRef.current.load(); // 重新加载音频
+  // 当前媒体文件
+  const currentFile = playlist[currentIndex];
+
+  // 播放/暂停
+  const togglePlayPause = () => {
+    if (mediaRef.current) {
+      if (isPlaying) {
+        mediaRef.current.pause();
+      } else {
+        mediaRef.current.play().catch(err => {
+          console.error('播放失败:', err);
+          setError('播放失败，请检查文件格式');
+        });
       }
-      
-      // 延迟一点时间确保媒体元素已经设置好src
-      setTimeout(() => {
-        const mediaElement = currentFile.type === 'video' ? videoRef.current : audioRef.current;
-        if (mediaElement) {
-          mediaElement.play().catch(err => {
-            console.error('Foxel Media Player: 播放失败', err);
-          });
-        }
-      }, 200);
     }
-  }, [currentFile]);
+  };
+
+  // 停止播放
+  const stopPlayback = () => {
+    if (mediaRef.current) {
+      mediaRef.current.pause();
+      mediaRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  };
+
+  // 上一首/下一首
+  const playPrevious = () => {
+    if (playlist.length > 1) {
+      const newIndex = currentIndex > 0 ? currentIndex - 1 : playlist.length - 1;
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  const playNext = () => {
+    if (playlist.length > 1) {
+      const newIndex = currentIndex < playlist.length - 1 ? currentIndex + 1 : 0;
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  // 设置音量
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (mediaRef.current) {
+      mediaRef.current.volume = newVolume;
+    }
+  };
+
+  // 静音切换
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (mediaRef.current) {
+      mediaRef.current.muted = newMuted;
+    }
+  };
+
+  // 设置播放速度
+  const handlePlaybackRateChange = (rate: number) => {
+    setPlaybackRate(rate);
+    if (mediaRef.current) {
+      mediaRef.current.playbackRate = rate;
+    }
+  };
+
+  // 跳转到指定时间
+  const seekTo = (time: number) => {
+    if (mediaRef.current) {
+      mediaRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  // 全屏切换
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // 关闭插件
+  const handleClose = () => {
+    ctx.host.close();
+  };
 
   // 格式化时间
   const formatTime = (seconds: number): string => {
@@ -235,252 +168,51 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 创建新的播放列表
-  const createPlaylist = (name: string): Playlist => {
-    const newPlaylist: Playlist = {
-      id: Date.now().toString(),
-      name,
-      files: [],
-      currentIndex: 0
-    };
-    setPlaylists(prev => [...prev, newPlaylist]);
-    return newPlaylist;
-  };
-
-
-  // 从播放列表移除文件
-  const removeFileFromPlaylist = (playlistId: string, fileId: string) => {
-    setPlaylists(prev => prev.map(playlist => 
-      playlist.id === playlistId 
-        ? { 
-            ...playlist, 
-            files: playlist.files.filter(f => f.id !== fileId),
-            currentIndex: playlist.currentIndex >= playlist.files.length - 1 
-              ? Math.max(0, playlist.currentIndex - 1) 
-              : playlist.currentIndex
-          }
-        : playlist
-    ));
-  };
-
-  // 播放文件
-  const playFile = (file: MediaFile) => {
-    setCurrentFile(file);
-    
-    // 设置媒体元素的src属性
-    if (file.type === 'video' && videoRef.current) {
-      videoRef.current.src = file.url;
-    } else if (file.type === 'audio' && audioRef.current) {
-      audioRef.current.src = file.url;
+  // 显示/隐藏控制栏
+  const showControlsTemporarily = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
     }
-    
-    setPlaybackState(prev => ({ ...prev, isPlaying: true }));
-  };
-
-  // 暂停/播放切换
-  const togglePlayPause = () => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      if (playbackState.isPlaying) {
-        mediaElement.pause();
-      } else {
-        mediaElement.play();
+    controlsTimeoutRef.current = window.setTimeout(() => {
+      if (isPlaying) {
+        setShowControls(false);
       }
-    }
-  };
-
-  // 停止播放
-  const stopPlayback = () => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      mediaElement.pause();
-      mediaElement.currentTime = 0;
-    }
-    setPlaybackState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
-  };
-
-  // 上一首/下一首
-  const playPrevious = () => {
-    if (currentPlaylist && currentPlaylist.files.length > 0) {
-      const newIndex = currentPlaylist.currentIndex > 0 
-        ? currentPlaylist.currentIndex - 1 
-        : currentPlaylist.files.length - 1;
-      setCurrentPlaylist(prev => prev ? { ...prev, currentIndex: newIndex } : null);
-      playFile(currentPlaylist.files[newIndex]);
-    }
-  };
-
-  const playNext = () => {
-    if (currentPlaylist && currentPlaylist.files.length > 0) {
-      const newIndex = currentPlaylist.currentIndex < currentPlaylist.files.length - 1 
-        ? currentPlaylist.currentIndex + 1 
-        : 0;
-      setCurrentPlaylist(prev => prev ? { ...prev, currentIndex: newIndex } : null);
-      playFile(currentPlaylist.files[newIndex]);
-    }
-  };
-
-  // 设置音量
-  const setVolume = (volume: number) => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      mediaElement.volume = volume;
-      setPlaybackState(prev => ({ ...prev, volume }));
-    }
-  };
-
-  // 静音切换
-  const toggleMute = () => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      mediaElement.muted = !playbackState.isMuted;
-      setPlaybackState(prev => ({ ...prev, isMuted: !prev.isMuted }));
-    }
-  };
-
-  // 设置播放速度
-  const setPlaybackRate = (rate: number) => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      mediaElement.playbackRate = rate;
-      setPlaybackState(prev => ({ ...prev, playbackRate: rate }));
-    }
-  };
-
-  // 跳转到指定时间
-  const seekTo = (time: number) => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      mediaElement.currentTime = time;
-      setPlaybackState(prev => ({ ...prev, currentTime: time }));
-    }
-  };
-
-
-  // 音频可视化
-  const initAudioVisualizer = () => {
-    if (!audioRef.current || !canvasRef.current) return;
-
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaElementSource(audioRef.current);
-      
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-      
-      analyser.fftSize = 256;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      
-      audioContextRef.current = audioContext;
-      analyserRef.current = analyser;
-      dataArrayRef.current = dataArray;
-      
-      drawVisualizer();
-    } catch (err) {
-      console.error('Failed to initialize audio visualizer:', err);
-    }
-  };
-
-  const drawVisualizer = () => {
-    if (!analyserRef.current || !dataArrayRef.current || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const draw = () => {
-      if (!analyserRef.current || !dataArrayRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-      
-      ctx.fillStyle = currentTheme.background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      const barWidth = (canvas.width / dataArrayRef.current.length) * 2.5;
-      let barHeight;
-      let x = 0;
-      
-      for (let i = 0; i < dataArrayRef.current.length; i++) {
-        barHeight = (dataArrayRef.current[i] / 255) * canvas.height;
-        
-        const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
-        gradient.addColorStop(0, currentTheme.primary);
-        gradient.addColorStop(1, currentTheme.accent);
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        
-        x += barWidth + 1;
-      }
-      
-      animationRef.current = requestAnimationFrame(draw);
-    };
-    
-    draw();
+    }, 3000);
   };
 
   // 事件处理
   const handleTimeUpdate = () => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      setPlaybackState(prev => ({ ...prev, currentTime: mediaElement.currentTime }));
+    if (mediaRef.current) {
+      setCurrentTime(mediaRef.current.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-    if (mediaElement) {
-      setPlaybackState(prev => ({ ...prev, duration: mediaElement.duration }));
-    }
-  };
-
-  const handleEnded = () => {
-    if (playbackState.repeatMode === 'one') {
-      const mediaElement = currentFile?.type === 'video' ? videoRef.current : audioRef.current;
-      if (mediaElement) {
-        mediaElement.currentTime = 0;
-        mediaElement.play();
-      }
-    } else {
-      playNext();
+    if (mediaRef.current) {
+      setDuration(mediaRef.current.duration);
+      setIsLoading(false);
     }
   };
 
   const handlePlay = () => {
-    setPlaybackState(prev => ({ ...prev, isPlaying: true }));
-    if (currentFile?.type === 'audio' && showVisualizer) {
-      initAudioVisualizer();
-    }
+    setIsPlaying(true);
+    setError('');
   };
 
   const handlePause = () => {
-    setPlaybackState(prev => ({ ...prev, isPlaying: false }));
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
+    setIsPlaying(false);
   };
 
-  // 初始化
-  useEffect(() => {
-    // 只有在没有从Foxel传入文件时才创建默认播放列表
-    if (playlists.length === 0 && (!ctx || !ctx.entry || !ctx.urls.downloadUrl)) {
-      createPlaylist('默认播放列表');
-    }
-  }, [playlists.length, ctx]);
+  const handleEnded = () => {
+    setIsPlaying(false);
+    playNext();
+  };
 
-  // 清理资源
-  useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
+  const handleError = () => {
+    setError('媒体文件加载失败');
+    setIsLoading(false);
+  };
 
   // 键盘快捷键
   useEffect(() => {
@@ -494,19 +226,19 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          seekTo(Math.max(0, playbackState.currentTime - 10));
+          seekTo(Math.max(0, currentTime - 10));
           break;
         case 'ArrowRight':
           e.preventDefault();
-          seekTo(Math.min(playbackState.duration, playbackState.currentTime + 10));
+          seekTo(Math.min(duration, currentTime + 10));
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setVolume(Math.min(1, playbackState.volume + 0.1));
+          handleVolumeChange(Math.min(1, volume + 0.1));
           break;
         case 'ArrowDown':
           e.preventDefault();
-          setVolume(Math.max(0, playbackState.volume - 0.1));
+          handleVolumeChange(Math.max(0, volume - 0.1));
           break;
         case 'KeyM':
           e.preventDefault();
@@ -526,797 +258,526 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
           break;
         case 'KeyF':
           e.preventDefault();
-          setIsFullscreen(!isFullscreen);
+          toggleFullscreen();
           break;
-        case 'KeyL':
-          e.preventDefault();
-          setShowLyrics(!showLyrics);
-          break;
-        case 'KeyV':
-          e.preventDefault();
-          setShowVisualizer(!showVisualizer);
+        case 'Escape':
+          if (isFullscreen) {
+            toggleFullscreen();
+          } else {
+            handleClose();
+          }
           break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [playbackState, isFullscreen, showLyrics, showVisualizer]);
+  }, [currentTime, duration, volume, isFullscreen]);
 
-  if (loading) {
+  // 全屏变化监听
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
     return (
-      <div style={{
+      <div id="foxel-media-player-plus" style={{
         width: '100%',
         height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: currentTheme.background,
-        color: currentTheme.text,
+        backgroundColor: '#1a1a1a',
+        color: '#ffffff',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎵</div>
-          <div>加载媒体播放器中...</div>
+          <div>加载媒体文件中...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div id="foxel-media-player-plus" style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1a1a1a',
+        color: '#ff6b6b',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <div>{error}</div>
+          <button
+            onClick={handleClose}
+            style={{
+              marginTop: '16px',
+              padding: '8px 16px',
+              backgroundColor: '#d32f2f',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            关闭
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      backgroundColor: currentTheme.background,
-      color: currentTheme.text,
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      overflow: 'hidden'
-    }}>
-      {/* 侧边栏 - 播放列表 */}
-      {showPlaylist && (
-        <div style={{
-          width: '300px',
-          height: '100%',
-          backgroundColor: currentTheme.surface,
-          borderRight: `1px solid ${currentTheme.textSecondary}20`,
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* 播放列表头部 */}
-          <div style={{
-            padding: '16px',
-            borderBottom: `1px solid ${currentTheme.textSecondary}20`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <h3 style={{ margin: 0, fontSize: '16px' }}>播放列表</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: currentTheme.primary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                📁 添加文件
-              </button>
-              <button
-                onClick={() => createPlaylist(`播放列表 ${playlists.length + 1}`)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: currentTheme.secondary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                ➕ 新建
-              </button>
-            </div>
-          </div>
-
-          {/* 播放列表内容 */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
-            {playlists.map(playlist => (
-              <div key={playlist.id} style={{ marginBottom: '16px' }}>
-                <div style={{
-                  padding: '8px 12px',
-                  backgroundColor: currentPlaylist?.id === playlist.id ? currentTheme.primary + '20' : 'transparent',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginBottom: '8px'
-                }}
-                onClick={() => setCurrentPlaylist(playlist)}
-                >
-                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{playlist.name}</div>
-                  <div style={{ fontSize: '12px', color: currentTheme.textSecondary }}>
-                    {playlist.files.length} 个文件
-                  </div>
-                </div>
-                
-                {currentPlaylist?.id === playlist.id && (
-                  <div style={{ paddingLeft: '8px' }}>
-                    {playlist.files.map((file, index) => (
-                      <div
-                        key={file.id}
-                        style={{
-                          padding: '8px',
-                          backgroundColor: currentFile?.id === file.id ? currentTheme.primary + '30' : 'transparent',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginBottom: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}
-                        onClick={() => playFile(file)}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: currentFile?.id === file.id ? 'bold' : 'normal',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {file.name}
-                          </div>
-                          <div style={{
-                            fontSize: '11px',
-                            color: currentTheme.textSecondary,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {file.type === 'audio' ? '🎵' : '🎬'} {formatFileSize(file.size)}
-                            {file.duration && ` • ${formatTime(file.duration)}`}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeFileFromPlaylist(playlist.id, file.id);
-                          }}
-                          style={{
-                            padding: '4px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            color: currentTheme.error,
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 主播放区域 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* 顶部工具栏 */}
-        <div style={{
-          height: '60px',
-          backgroundColor: currentTheme.surface,
-          borderBottom: `1px solid ${currentTheme.textSecondary}20`,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 16px',
-          gap: '16px'
-        }}>
-          <button
-            onClick={() => setShowPlaylist(!showPlaylist)}
-            style={{
-              padding: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: currentTheme.text,
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            {showPlaylist ? '◀️' : '▶️'} 播放列表
-          </button>
-          
-          <div style={{ flex: 1 }} />
-          
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            style={{
-              padding: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: currentTheme.text,
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            ⚙️ 设置
-          </button>
-          
-          <button
-            onClick={() => setShowLyrics(!showLyrics)}
-            style={{
-              padding: '8px',
-              backgroundColor: showLyrics ? currentTheme.primary + '30' : 'transparent',
-              border: 'none',
-              color: currentTheme.text,
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            📝 歌词
-          </button>
-          
-          <button
-            onClick={() => setShowVisualizer(!showVisualizer)}
-            style={{
-              padding: '8px',
-              backgroundColor: showVisualizer ? currentTheme.primary + '30' : 'transparent',
-              border: 'none',
-              color: currentTheme.text,
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            🌊 可视化
-          </button>
-          
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            style={{
-              padding: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: currentTheme.text,
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            {isFullscreen ? '⤓' : '⤢'} 全屏
-          </button>
-        </div>
-
-        {/* 媒体播放区域 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {currentFile ? (
-            <>
-              {/* 视频播放器 */}
-              {currentFile.type === 'video' && (
-                <video
-                  ref={videoRef}
-                  src={currentFile.url}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    backgroundColor: '#000'
-                  }}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={handleEnded}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                  controls={false}
-                />
-              )}
-
-              {/* 音频播放器 */}
-              {currentFile.type === 'audio' && (
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '40px',
-                  background: `linear-gradient(135deg, ${currentTheme.primary}20, ${currentTheme.accent}20)`
-                }}>
-                  {/* 音频可视化 */}
-                  {showVisualizer && (
-                    <canvas
-                      ref={canvasRef}
-                      width={400}
-                      height={200}
-                      style={{
-                        backgroundColor: currentTheme.surface,
-                        borderRadius: '8px',
-                        marginBottom: '20px',
-                        boxShadow: `0 4px 20px ${currentTheme.primary}30`
-                      }}
-                    />
-                  )}
-
-                  {/* 专辑封面占位符 */}
-                  <div style={{
-                    width: '200px',
-                    height: '200px',
-                    backgroundColor: currentTheme.surface,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '48px',
-                    marginBottom: '20px',
-                    boxShadow: `0 8px 32px ${currentTheme.primary}30`
-                  }}>
-                    🎵
-                  </div>
-
-                  {/* 歌曲信息 */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>{currentFile.name}</h2>
-                    {currentFile.artist && (
-                      <p style={{ margin: '0', color: currentTheme.textSecondary, fontSize: '16px' }}>
-                        {currentFile.artist}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* 播放控制栏 */}
-              <div style={{
-                height: '120px',
-                backgroundColor: currentTheme.surface,
-                borderTop: `1px solid ${currentTheme.textSecondary}20`,
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                {/* 进度条 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', minWidth: '40px' }}>
-                    {formatTime(playbackState.currentTime)}
-                  </span>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <input
-                      type="range"
-                      min="0"
-                      max={playbackState.duration || 0}
-                      value={playbackState.currentTime}
-                      onChange={(e) => seekTo(Number(e.target.value))}
-                      style={{
-                        width: '100%',
-                        height: '6px',
-                        background: `linear-gradient(to right, ${currentTheme.primary} 0%, ${currentTheme.primary} ${(playbackState.currentTime / (playbackState.duration || 1)) * 100}%, ${currentTheme.textSecondary}30 ${(playbackState.currentTime / (playbackState.duration || 1)) * 100}%, ${currentTheme.textSecondary}30 100%)`,
-                        outline: 'none',
-                        borderRadius: '3px',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: '12px', minWidth: '40px' }}>
-                    {formatTime(playbackState.duration)}
-                  </span>
-                </div>
-
-                {/* 控制按钮 */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-                  <button
-                    onClick={playPrevious}
-                    style={{
-                      padding: '8px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: currentTheme.text,
-                      cursor: 'pointer',
-                      fontSize: '20px',
-                      borderRadius: '50%',
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ⏮️
-                  </button>
-                  
-                  <button
-                    onClick={togglePlayPause}
-                    style={{
-                      padding: '12px',
-                      backgroundColor: currentTheme.primary,
-                      border: 'none',
-                      color: 'white',
-                      cursor: 'pointer',
-                      fontSize: '24px',
-                      borderRadius: '50%',
-                      width: '60px',
-                      height: '60px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: `0 4px 16px ${currentTheme.primary}50`
-                    }}
-                  >
-                    {playbackState.isPlaying ? '⏸️' : '▶️'}
-                  </button>
-                  
-                  <button
-                    onClick={playNext}
-                    style={{
-                      padding: '8px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: currentTheme.text,
-                      cursor: 'pointer',
-                      fontSize: '20px',
-                      borderRadius: '50%',
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ⏭️
-                  </button>
-                  
-                  <button
-                    onClick={stopPlayback}
-                    style={{
-                      padding: '8px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: currentTheme.text,
-                      cursor: 'pointer',
-                      fontSize: '20px',
-                      borderRadius: '50%',
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ⏹️
-                  </button>
-                </div>
-
-                {/* 音量和其他控制 */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      onClick={toggleMute}
-                      style={{
-                        padding: '6px',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: currentTheme.text,
-                        cursor: 'pointer',
-                        fontSize: '16px'
-                      }}
-                    >
-                      {playbackState.isMuted ? '🔇' : '🔊'}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={playbackState.volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      style={{
-                        width: '80px',
-                        height: '4px',
-                        background: `linear-gradient(to right, ${currentTheme.primary} 0%, ${currentTheme.primary} ${playbackState.volume * 100}%, ${currentTheme.textSecondary}30 ${playbackState.volume * 100}%, ${currentTheme.textSecondary}30 100%)`,
-                        outline: 'none',
-                        borderRadius: '2px',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <select
-                      value={playbackState.playbackRate}
-                      onChange={(e) => setPlaybackRate(Number(e.target.value))}
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor: currentTheme.surface,
-                        color: currentTheme.text,
-                        border: `1px solid ${currentTheme.textSecondary}30`,
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                      }}
-                    >
-                      <option value={0.5}>0.5x</option>
-                      <option value={0.75}>0.75x</option>
-                      <option value={1}>1x</option>
-                      <option value={1.25}>1.25x</option>
-                      <option value={1.5}>1.5x</option>
-                      <option value={2}>2x</option>
-                    </select>
-                    
-                    <button
-                      onClick={() => setPlaybackState(prev => ({ 
-                        ...prev, 
-                        repeatMode: prev.repeatMode === 'none' ? 'all' : prev.repeatMode === 'all' ? 'one' : 'none' 
-                      }))}
-                      style={{
-                        padding: '6px',
-                        backgroundColor: playbackState.repeatMode !== 'none' ? currentTheme.primary + '30' : 'transparent',
-                        border: 'none',
-                        color: currentTheme.text,
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      {playbackState.repeatMode === 'none' ? '🔁' : playbackState.repeatMode === 'all' ? '🔁' : '🔂'}
-                    </button>
-                    
-                    <button
-                      onClick={() => setPlaybackState(prev => ({ ...prev, isShuffled: !prev.isShuffled }))}
-                      style={{
-                        padding: '6px',
-                        backgroundColor: playbackState.isShuffled ? currentTheme.primary + '30' : 'transparent',
-                        border: 'none',
-                        color: currentTheme.text,
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      🔀
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
+    <div 
+      id="foxel-media-player-plus"
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#1a1a1a',
+        color: '#ffffff',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+      onMouseMove={showControlsTemporarily}
+      onMouseLeave={() => {
+        if (isPlaying) {
+          setShowControls(false);
+        }
+      }}
+    >
+      {/* 媒体元素 */}
+      {currentFile && (
+        <>
+          {mediaType === 'video' ? (
+            <video
+              ref={mediaRef as React.RefObject<HTMLVideoElement>}
+              src={currentFile.url}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                backgroundColor: '#000'
+              }}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onEnded={handleEnded}
+              onError={handleError}
+              onVolumeChange={() => setVolume(mediaRef.current?.volume || 0)}
+              onRateChange={() => setPlaybackRate(mediaRef.current?.playbackRate || 1)}
+              controls={false}
+              preload="metadata"
+            />
           ) : (
-            /* 空状态 */
             <div style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              color: currentTheme.textSecondary,
+              background: 'linear-gradient(135deg, #bb86fc20, #03dac620)',
               padding: '40px'
             }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎵</div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>欢迎使用媒体播放器</h3>
-              <p style={{ margin: '0 0 24px 0', textAlign: 'center' }}>
-                添加音频或视频文件开始播放
-              </p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
+              {/* 音频封面占位符 */}
+              <div style={{
+                width: '200px',
+                height: '200px',
+                backgroundColor: '#2a2a2a',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '48px',
+                marginBottom: '20px',
+                boxShadow: '0 8px 32px rgba(187, 134, 252, 0.3)'
+              }}>
+                🎵
+              </div>
+
+              {/* 歌曲信息 */}
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>{currentFile.name}</h2>
+                <p style={{ margin: '0', color: '#b3b3b3', fontSize: '16px' }}>
+                  {mediaType === 'audio' ? '音频文件' : '视频文件'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <audio
+            ref={mediaRef as React.RefObject<HTMLAudioElement>}
+            src={mediaType === 'audio' ? currentFile.url : ''}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onEnded={handleEnded}
+            onError={handleError}
+            onVolumeChange={() => setVolume(mediaRef.current?.volume || 0)}
+            onRateChange={() => setPlaybackRate(mediaRef.current?.playbackRate || 1)}
+            style={{ display: 'none' }}
+            preload="metadata"
+          />
+        </>
+      )}
+
+      {/* 控制栏 */}
+      {showControls && (
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(10px)',
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          transition: 'opacity 0.3s ease'
+        }}>
+          {/* 进度条 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '12px', minWidth: '40px', color: '#ccc' }}>
+              {formatTime(currentTime)}
+            </span>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <input
+                type="range"
+                min="0"
+                max={duration || 0}
+                value={currentTime}
+                onChange={(e) => seekTo(Number(e.target.value))}
                 style={{
-                  padding: '12px 24px',
-                  backgroundColor: currentTheme.primary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
+                  width: '100%',
+                  height: '6px',
+                  background: `linear-gradient(to right, #bb86fc 0%, #bb86fc ${(currentTime / (duration || 1)) * 100}%, #333 ${(currentTime / (duration || 1)) * 100}%, #333 100%)`,
+                  outline: 'none',
+                  borderRadius: '3px',
                   cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold'
+                  appearance: 'none'
+                }}
+              />
+            </div>
+            <span style={{ fontSize: '12px', minWidth: '40px', color: '#ccc' }}>
+              {formatTime(duration)}
+            </span>
+          </div>
+
+          {/* 控制按钮 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                onClick={playPrevious}
+                disabled={playlist.length <= 1}
+                style={{
+                  padding: '8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: playlist.length <= 1 ? '#666' : '#fff',
+                  cursor: playlist.length <= 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '20px',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                📁 选择文件
+                ⏮️
+              </button>
+              
+              <button
+                onClick={togglePlayPause}
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#bb86fc',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '24px',
+                  borderRadius: '50%',
+                  width: '60px',
+                  height: '60px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(187, 134, 252, 0.5)'
+                }}
+              >
+                {isPlaying ? '⏸️' : '▶️'}
+              </button>
+              
+              <button
+                onClick={playNext}
+                disabled={playlist.length <= 1}
+                style={{
+                  padding: '8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: playlist.length <= 1 ? '#666' : '#fff',
+                  cursor: playlist.length <= 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '20px',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ⏭️
+              </button>
+              
+              <button
+                onClick={stopPlayback}
+                style={{
+                  padding: '8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ⏹️
               </button>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* 隐藏的文件输入 */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="audio/*,video/*"
-        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-        style={{ display: 'none' }}
-      />
-
-      {/* 音频元素 */}
-      <audio
-        ref={audioRef}
-        src={currentFile?.type === 'audio' ? currentFile.url : ''}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-        onPlay={handlePlay}
-        onPause={handlePause}
-      />
-
-      {/* 设置面板 */}
-      {showSettings && (
-        <div style={{
-          position: 'absolute',
-          top: '60px',
-          right: '16px',
-          width: '300px',
-          backgroundColor: currentTheme.surface,
-          border: `1px solid ${currentTheme.textSecondary}30`,
-          borderRadius: '8px',
-          padding: '16px',
-          boxShadow: `0 8px 32px ${currentTheme.primary}20`,
-          zIndex: 1000
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>设置</h3>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>主题</label>
-            <select
-              value={currentTheme.name}
-              onChange={(e) => {
-                const theme = themes.find(t => t.name === e.target.value);
-                if (theme) setCurrentTheme(theme);
-              }}
-              style={{
-                width: '100%',
-                padding: '8px',
-                backgroundColor: currentTheme.background,
-                color: currentTheme.text,
-                border: `1px solid ${currentTheme.textSecondary}30`,
-                borderRadius: '4px',
-                fontSize: '14px'
-              }}
-            >
-              {themes.map(theme => (
-                <option key={theme.name} value={theme.name}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
-              默认音量: {Math.round(playbackState.volume * 100)}%
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={playbackState.volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              style={{
-                width: '100%',
-                height: '6px',
-                background: `linear-gradient(to right, ${currentTheme.primary} 0%, ${currentTheme.primary} ${playbackState.volume * 100}%, ${currentTheme.textSecondary}30 ${playbackState.volume * 100}%, ${currentTheme.textSecondary}30 100%)`,
-                outline: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}
-            />
-          </div>
-
-          <button
-            onClick={() => setShowSettings(false)}
-            style={{
-              width: '100%',
-              padding: '8px',
-              backgroundColor: currentTheme.textSecondary,
-              color: currentTheme.background,
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            关闭
-          </button>
-        </div>
-      )}
-
-      {/* 歌词面板 */}
-      {showLyrics && currentFile && (
-        <div style={{
-          position: 'absolute',
-          top: '60px',
-          left: showPlaylist ? '316px' : '16px',
-          right: '16px',
-          bottom: '140px',
-          backgroundColor: currentTheme.surface,
-          border: `1px solid ${currentTheme.textSecondary}30`,
-          borderRadius: '8px',
-          padding: '16px',
-          boxShadow: `0 8px 32px ${currentTheme.primary}20`,
-          zIndex: 1000,
-          overflow: 'auto'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>歌词</h3>
-          {currentFile.lyrics ? (
-            <div style={{
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.6',
-              fontSize: '14px',
-              color: currentTheme.text
-            }}>
-              {currentFile.lyrics}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                onClick={toggleMute}
+                style={{
+                  padding: '6px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                {isMuted ? '🔇' : '🔊'}
+              </button>
+              
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                style={{
+                  width: '80px',
+                  height: '4px',
+                  background: `linear-gradient(to right, #bb86fc 0%, #bb86fc ${(isMuted ? 0 : volume) * 100}%, #333 ${(isMuted ? 0 : volume) * 100}%, #333 100%)`,
+                  outline: 'none',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  appearance: 'none'
+                }}
+              />
+              
+              <select
+                value={playbackRate}
+                onChange={(e) => handlePlaybackRateChange(Number(e.target.value))}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#2a2a2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              >
+                <option value={0.5}>0.5x</option>
+                <option value={0.75}>0.75x</option>
+                <option value={1}>1x</option>
+                <option value={1.25}>1.25x</option>
+                <option value={1.5}>1.5x</option>
+                <option value={2}>2x</option>
+              </select>
+              
+              <button
+                onClick={toggleFullscreen}
+                style={{
+                  padding: '6px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                {isFullscreen ? '⤓' : '⤢'}
+              </button>
+              
+              <button
+                onClick={handleClose}
+                style={{
+                  padding: '6px',
+                  backgroundColor: '#d32f2f',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  borderRadius: '4px'
+                }}
+              >
+                ✕
+              </button>
             </div>
-          ) : (
-            <div style={{
-              textAlign: 'center',
-              color: currentTheme.textSecondary,
-              padding: '40px 0'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-              <p>暂无歌词</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 上传进度 */}
-      {isUploading && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: currentTheme.surface,
-          border: `1px solid ${currentTheme.textSecondary}30`,
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: `0 8px 32px ${currentTheme.primary}20`,
-          zIndex: 2000,
-          minWidth: '300px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '24px', marginBottom: '16px' }}>📤</div>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>上传文件中...</h3>
-          <div style={{
-            width: '100%',
-            height: '8px',
-            backgroundColor: currentTheme.textSecondary + '30',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            marginBottom: '8px'
-          }}>
-            <div style={{
-              width: `${uploadProgress}%`,
-              height: '100%',
-              backgroundColor: currentTheme.primary,
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-          <div style={{ fontSize: '14px', color: currentTheme.textSecondary }}>
-            {Math.round(uploadProgress)}%
           </div>
         </div>
       )}
 
-      {/* 错误提示 */}
-      {error && (
+      {/* 播放列表 */}
+      {showPlaylist && playlist.length > 0 && (
         <div style={{
           position: 'absolute',
           top: '16px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: currentTheme.error,
-          color: 'white',
-          padding: '12px 24px',
+          right: '16px',
+          width: '300px',
+          maxHeight: '400px',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(10px)',
           borderRadius: '8px',
-          fontSize: '14px',
-          zIndex: 2000,
-          boxShadow: `0 4px 16px ${currentTheme.error}50`
+          padding: '16px',
+          overflow: 'auto',
+          zIndex: 10
         }}>
-          ❌ {error}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px' }}>播放列表</h3>
+            <button
+              onClick={() => setShowPlaylist(false)}
+              style={{
+                padding: '4px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          
+          {playlist.map((file, index) => (
+            <div
+              key={file.id}
+              style={{
+                padding: '8px',
+                backgroundColor: index === currentIndex ? 'rgba(187, 134, 252, 0.3)' : 'transparent',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginBottom: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onClick={() => setCurrentIndex(index)}
+            >
+              <span style={{ fontSize: '16px' }}>
+                {file.type === 'audio' ? '🎵' : '🎬'}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: index === currentIndex ? 'bold' : 'normal',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {file.name}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#ccc',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {file.type === 'audio' ? '音频文件' : '视频文件'}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* 播放列表按钮 */}
+      {playlist.length > 0 && (
+        <button
+          onClick={() => setShowPlaylist(!showPlaylist)}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            padding: '8px',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            border: 'none',
+            color: '#fff',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            fontSize: '14px',
+            zIndex: 10
+          }}
+        >
+          📋 播放列表 ({playlist.length})
+        </button>
+      )}
+
+      {/* 快捷键提示 */}
+      <div style={{
+        position: 'absolute',
+        top: '16px',
+        left: '16px',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backdropFilter: 'blur(10px)',
+        padding: '8px 12px',
+        borderRadius: '6px',
+        fontSize: '12px',
+        color: '#ccc',
+        zIndex: 10,
+        maxWidth: '300px',
+        lineHeight: '1.4'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>快捷键:</div>
+        <div>Space(播放/暂停) ←→(快退/快进) ↑↓(音量) M(静音)</div>
+        <div>N(下一首) P(上一首) S(停止) F(全屏) Esc(关闭)</div>
+      </div>
     </div>
   );
 };

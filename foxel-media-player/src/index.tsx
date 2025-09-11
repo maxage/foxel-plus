@@ -5,15 +5,16 @@ import App from './App';
 
 let root: any = null;
 
-// 从 package.json 读取版本号（在构建时会被替换）
-const VERSION = '1.0.0';
+// 从构建时注入的环境变量获取版本信息
+declare const PLUGIN_VERSION: string;
+declare const PLUGIN_AUTHOR: string;
 
 const plugin: RegisteredPlugin = {
   key: 'com.foxel-plus.media-player-plus',
   name: '媒体播放器 Plus',
-  version: VERSION,
+  version: PLUGIN_VERSION,
   description: '功能强大的媒体播放器插件，支持音频/视频播放、播放列表管理、歌词显示、音频可视化、多种主题等丰富功能',
-  author: 'Jason',
+  author: PLUGIN_AUTHOR,
   website: 'https://github.com/maxage/foxel-plus',
   github: 'https://github.com/maxage/foxel-plus',
   supportedExts: [
@@ -37,22 +38,46 @@ const plugin: RegisteredPlugin = {
 
   mount: (container: HTMLElement, ctx) => {
     try {
+      // 设置容器 ID 用于样式隔离
+      container.id = 'foxel-media-player-plus';
+      
       // 清理容器
       container.innerHTML = '';
 
+      // 创建 React root
       root = createRoot(container);
       root.render(<App ctx={ctx} />);
     } catch (error) {
-      console.error('Foxel Media Player Plus mount error:', error);
+      console.error('媒体播放器插件挂载失败:', error);
+      container.innerHTML = '<div style="padding: 20px; color: #ff6b6b; font-family: monospace;">媒体播放器加载失败，请刷新页面重试</div>';
     }
   },
 
   unmount: (container: HTMLElement) => {
-    if (root) {
-      root.unmount();
-      root = null;
+    try {
+      // 清理 React root
+      if (root) {
+        root.unmount();
+        root = null;
+      }
+      
+      // 清理容器
+      container.innerHTML = '';
+    } catch (error) {
+      console.error('媒体播放器插件卸载失败:', error);
     }
   }
 };
 
-window.FoxelRegister(plugin);
+// 注册插件
+if (typeof window !== 'undefined' && window.FoxelRegister) {
+  window.FoxelRegister(plugin);
+} else {
+  console.warn('FoxelRegister 函数未找到，插件可能无法正常工作');
+  setTimeout(() => {
+    if (window.FoxelRegister) {
+      window.FoxelRegister(plugin);
+      console.log('媒体播放器插件延迟注册成功');
+    }
+  }, 100);
+}

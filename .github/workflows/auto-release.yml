@@ -1,108 +1,200 @@
-name: Auto Release Plugin
+name: Auto Release Plugins
 
 on:
   push:
-    paths:
-      - 'foxel-*/**'
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  auto-release:
+  detect-changes:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: read
-    
+    outputs:
+      plugins: ${{ steps.changes.outputs.plugins }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # Required for diffing and log history
-        
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Detect changed plugins
-      id: detect-plugins
-      run: |
-        echo "🔍 Detecting changed plugins..."
-        CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | grep '^foxel-.*/' | xargs -n 1 dirname | sort -u)
-        
-        if [ -z "$CHANGED_DIRS" ]; then
-          echo "No plugin changes detected in directories."
-          echo "changed=false" >> $GITHUB_OUTPUT
-        else
-          echo "📦 Changed plugin directories found: $CHANGED_DIRS"
-          PLUGINS_STRING=$(echo $CHANGED_DIRS | tr '\n' ' ')
-          echo "changed=true" >> $GITHUB_OUTPUT
-          echo "plugins=${PLUGINS_STRING}" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Process and Release Changed Plugins
-      if: steps.detect-plugins.outputs.changed == 'true'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-
-        for plugin_dir in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/package.json" ]; then
-            echo "--- Processing plugin: $plugin_dir ---"
-            cd "$plugin_dir"
-
-            # Get current version and find the last tag for this plugin
-            CURRENT_VERSION=$(node -p "require('./package.json').version")
-            LAST_TAG=$(git tag --list "$plugin_dir-v*" | sort -V | tail -n 1)
-            
-            # Bump version
-            npm version patch -m "chore(release): %s"
-            
-            # Get new version and define new tag
-            NEW_VERSION=$(node -p "require('./package.json').version")
-            NEW_TAG="$plugin_dir-v$NEW_VERSION"
-            echo "🚀 New version for $plugin_dir: $NEW_VERSION"
-
-            # Generate Release Notes from commit messages
-            echo "📝 Generating release notes..."
-            RELEASE_NOTES="## 本次更新内容\n\n"
-            if [ -z "$LAST_TAG" ]; then
-              # If no previous tag, get all commits for this plugin's directory
-              COMMITS=$(git log --pretty=format:"- %s" -- "$plugin_dir")
-            else
-              # Get commits since the last tag for this plugin's directory
-              COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" -- "$plugin_dir")
-            fi
-            
-            if [ -z "$COMMITS" ]; then
-              RELEASE_NOTES+="本次发布无具体的提交说明。"
-            else
-              RELEASE_NOTES+="$COMMITS"
-            fi
-            echo -e "$RELEASE_NOTES" # For logging
-
-            # Build plugin
-            echo "🔨 Building plugin..."
-            npm ci
-            npm run build
-            
-            # Create GitHub Release
-            echo "📦 Creating GitHub Release for $NEW_TAG..."
-            gh release create "$NEW_TAG" \
-              --title "$plugin_dir v$NEW_VERSION" \
-              --notes-file <(echo -e "$RELEASE_NOTES") \
-              "dist/plugin.js"
-
-            cd ..
-            echo "✅ Successfully processed and released $plugin_dir."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 检测变更的插件
+        id: changes
+        run: |
+          # 获取上次提交的哈希
+          if [ "${{ github.event_name }}" = "push" ]; then
+            PREV_COMMIT=${{ github.event.before }}
+          else
+            PREV_COMMIT=$(git rev-parse HEAD~1)
           fi
-        done
+          
+          echo "Previous commit: $PREV_COMMIT"
+          echo "Current commit: ${{ github.sha }}"
+          
+          # 检测变更的插件目录
+          CHANGED_PLUGINS=""
+          
+          for plugin_dir in foxel-*-plus; do
+            if [ -d "$plugin_dir" ]; then
+              # 检查插件目录是否有变更
+              if git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -q "^$plugin_dir/"; then
+                echo "检测到插件变更: $plugin_dir"
+                CHANGED_PLUGINS="$CHANGED_PLUGINS$plugin_dir,"
+              fi
+            fi
+          done
+          
+          # 移除最后的逗号
+          CHANGED_PLUGINS=${CHANGED_PLUGINS%,}
+          
+          echo "变更的插件: $CHANGED_PLUGINS"
+          echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
 
-        # Push all version bumps and tags at once
-        echo "⬆️ Pushing version changes and tags to repository..."
-        git push --follow-tags
-        echo "🎉 All changed plugins have been released."
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-and-release:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.plugins != ''
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(format('["{0}"]', needs.detect-changes.outputs.plugins)) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 安装依赖
+        run: |
+          cd ${{ matrix.plugin }}
+          npm ci
+      
+      - name: 验证插件
+        run: |
+          cd ${{ matrix.plugin }}
+          npm run validate
+      
+      - name: 自动提升版本号
+        run: |
+          cd ${{ matrix.plugin }}
+          
+          # 获取当前版本
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "当前版本: $CURRENT_VERSION"
+          
+          # 提升 patch 版本
+          NEW_VERSION=$(node -p "
+            const version = '$CURRENT_VERSION';
+            const parts = version.split('.');
+            parts[2] = (parseInt(parts[2]) + 1).toString();
+            parts.join('.')
+          ")
+          echo "新版本: $NEW_VERSION"
+          
+          # 更新 package.json
+          npm version $NEW_VERSION --no-git-tag-version
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+      
+      - name: 构建插件
+        run: |
+          cd ${{ matrix.plugin }}
+          npm run build
+      
+      - name: 生成发布说明
+        id: release-notes
+        run: |
+          cd ${{ matrix.plugin }}
+          
+          # 获取上次发布的版本
+          LAST_TAG=$(git describe --tags --match="${{ matrix.plugin }}@*" --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # 如果没有找到标签，从项目开始查找
+            COMMITS=$(git log --oneline --grep="^feat(${{ matrix.plugin }}):" --grep="^fix(${{ matrix.plugin }}):" --grep="^perf(${{ matrix.plugin }}):" --grep="^refactor(${{ matrix.plugin }}):" --grep="^style(${{ matrix.plugin }}):" --grep="^docs(${{ matrix.plugin }}):" --grep="^test(${{ matrix.plugin }}):" --grep="^chore(${{ matrix.plugin }}):" --since="1 year ago" --pretty=format:"%s")
+          else
+            # 从上次标签开始查找
+            COMMITS=$(git log --oneline $LAST_TAG..HEAD --grep="^feat(${{ matrix.plugin }}):" --grep="^fix(${{ matrix.plugin }}):" --grep="^perf(${{ matrix.plugin }}):" --grep="^refactor(${{ matrix.plugin }}):" --grep="^style(${{ matrix.plugin }}):" --grep="^docs(${{ matrix.plugin }}):" --grep="^test(${{ matrix.plugin }}):" --grep="^chore(${{ matrix.plugin }}):" --pretty=format:"%s")
+          fi
+          
+          # 生成发布说明
+          RELEASE_NOTES="## 🚀 版本 ${{ env.NEW_VERSION }} 更新内容\n\n"
+          
+          if [ -n "$COMMITS" ]; then
+            echo "$COMMITS" | while read -r commit; do
+              if [ -n "$commit" ]; then
+                # 提取提交类型和描述
+                TYPE=$(echo "$commit" | sed -n 's/^\([^(]*\)([^)]*):.*/\1/p')
+                DESC=$(echo "$commit" | sed -n 's/^[^(]*([^)]*): \(.*\)/\1/p')
+                
+                case "$TYPE" in
+                  "feat")
+                    RELEASE_NOTES="$RELEASE_NOTES- ✨ 新功能: $DESC\n"
+                    ;;
+                  "fix")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🐛 修复: $DESC\n"
+                    ;;
+                  "perf")
+                    RELEASE_NOTES="$RELEASE_NOTES- ⚡ 性能优化: $DESC\n"
+                    ;;
+                  "refactor")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔧 重构: $DESC\n"
+                    ;;
+                  "style")
+                    RELEASE_NOTES="$RELEASE_NOTES- 💄 样式更新: $DESC\n"
+                    ;;
+                  "docs")
+                    RELEASE_NOTES="$RELEASE_NOTES- 📚 文档更新: $DESC\n"
+                    ;;
+                  "test")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🧪 测试更新: $DESC\n"
+                    ;;
+                  "chore")
+                    RELEASE_NOTES="$RELEASE_NOTES- 🔨 构建更新: $DESC\n"
+                    ;;
+                  *)
+                    RELEASE_NOTES="$RELEASE_NOTES- 📝 其他: $DESC\n"
+                    ;;
+                esac
+              fi
+            done
+          else
+            RELEASE_NOTES="$RELEASE_NOTES- 📦 自动版本更新\n"
+          fi
+          
+          RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: 创建 Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ matrix.plugin }}@${{ env.NEW_VERSION }}
+          release_name: ${{ matrix.plugin }} v${{ env.NEW_VERSION }}
+          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+      
+      - name: 上传构建产物
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ matrix.plugin }}/dist/plugin.js
+          asset_name: plugin.js
+          asset_content_type: application/javascript
+      
+      - name: 复制到根目录
+        run: |
+          cp ./${{ matrix.plugin }}/dist/plugin.js ./${{ matrix.plugin }}-plus.js
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./${{ matrix.plugin }}-plus.js
+          git commit -m "chore: 更新 ${{ matrix.plugin }} 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
+          git push
