@@ -27,14 +27,14 @@
 
 1. 访问 [Releases 页面](https://github.com/maxage/foxel-plus/releases/latest)
 2. 下载所需的插件文件：
-   - 图片查看器：`foxel-image-viewer.js`
-   - 代码查看器：`foxel-code-viewer.js`
-   - 媒体播放器：`foxel-media-player.js`
+   - 图片查看器：`plugin.js` (来自 foxel-image-viewer@latest)
+   - 代码查看器：`plugin.js` (来自 foxel-code-viewer@latest)
+   - 媒体播放器：`plugin.js` (来自 foxel-media-player@latest)
 3. 在 Foxel 的"应用"页面添加插件
 4. 输入对应的插件 URL：
-   - 图片查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-image-viewer.js`
-   - 代码查看器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-code-viewer.js`
-   - 媒体播放器：`https://github.com/maxage/foxel-plus/releases/latest/download/foxel-media-player.js`
+   - 图片查看器：`https://github.com/maxage/foxel-plus/releases/download/foxel-image-viewer@latest/plugin.js`
+   - 代码查看器：`https://github.com/maxage/foxel-plus/releases/download/foxel-code-viewer@latest/plugin.js`
+   - 媒体播放器：`https://github.com/maxage/foxel-plus/releases/download/foxel-media-player@latest/plugin.js`
 5. 安装完成后即可在文件管理器中查看对应文件类型
 
 ## 📦 可用插件
@@ -45,7 +45,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| **版本** | v1.0.0 |
+| **版本** | latest |
 | **文件大小** | ~158KB |
 | **支持格式** | JPG, PNG, GIF, BMP, WebP, SVG, ICO, TIFF |
 | **作者** | Jason |
@@ -84,7 +84,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| **版本** | v1.0.0 |
+| **版本** | latest |
 | **文件大小** | ~159KB |
 | **支持格式** | JS, TS, JSX, TSX, HTML, CSS, SCSS, JSON, MD, TXT, PY, JAVA, C, CPP, GO, PHP, RB, SH, YAML, XML |
 | **作者** | Jason |
@@ -122,7 +122,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| **版本** | v1.0.0 |
+| **版本** | latest |
 | **文件大小** | ~154KB |
 | **支持格式** | MP3, WAV, FLAC, AAC, OGG, M4A, WMA, OPUS, MP4, AVI, MKV, MOV, WMV, FLV, WebM, M4V, 3GP |
 | **作者** | Jason |
@@ -341,15 +341,15 @@ git push origin feature/amazing-feature
 ### 🚀 自动触发条件
 
 - **插件文件修改** - 当任何 `foxel-*/` 目录下的文件发生变更时
-- **根目录插件文件修改** - 当任何 `foxel-*.js` 文件发生变更时
+- **根目录插件文件修改** - 当任何 `plugin.js` 文件发生变更时
 - **推送到 main 分支** - 确保只在主分支上触发
 
 ### 📦 发布流程
 
 1. **自动检测** - 检测到插件文件变更，识别所有修改的插件
 2. **构建插件** - 使用 ESBuild 构建所有修改的插件
-3. **版本管理** - 从第一个修改插件的 `package.json` 读取版本号
-4. **创建标签** - 自动创建 Git 标签
+3. **版本管理** - 所有插件使用固定的 `latest` 版本
+4. **创建标签** - 自动创建 `@latest` 标签
 5. **发布 Release** - 在 GitHub 上创建 Release，包含所有插件文件
 6. **更新文件** - 更新根目录对应的插件文件
 
@@ -357,7 +357,7 @@ git push origin feature/amazing-feature
 
 - **手动发布** - 使用 "Manual Release" 工作流
 - **测试发布** - 使用 "Test Release" 工作流创建预发布版本
-- **版本控制** - 通过修改 `package.json` 中的版本号来管理版本
+- **版本控制** - 所有插件使用固定的 `latest` 版本，每次更新都替换旧版本
 
 ## 📊 项目统计
 
