@@ -193,7 +193,8 @@ jobs:
           git config --local user.name "GitHub Action"
           git add ./foxel-code-viewer.js
           git commit -m "chore: 更新 foxel-code-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
-          git push
+          git pull --rebase origin main
+          git push origin main
 
   build-image-viewer:
     needs: detect-changes
@@ -337,7 +338,8 @@ jobs:
           git config --local user.name "GitHub Action"
           git add ./foxel-image-viewer.js
           git commit -m "chore: 更新 foxel-image-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
-          git push
+          git pull --rebase origin main
+          git push origin main
 
   build-media-player:
     needs: detect-changes
@@ -481,4 +483,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add ./foxel-media-player.js
           git commit -m "chore: 更新 foxel-media-player 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
-          git push
+          git pull --rebase origin main
+          git push origin main
