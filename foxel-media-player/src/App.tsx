@@ -37,9 +37,21 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   // 初始化媒体文件
   useEffect(() => {
+    console.log('媒体播放器初始化:', {
+      filePath: ctx?.filePath,
+      downloadUrl: ctx?.urls?.downloadUrl,
+      entry: ctx?.entry
+    });
+    
     if (ctx && ctx.filePath && ctx.urls.downloadUrl) {
       const fileName = ctx.filePath.split('/').pop() || '';
       const fileType = getFileType(fileName);
+      
+      console.log('文件信息:', {
+        fileName,
+        fileType,
+        downloadUrl: ctx.urls.downloadUrl
+      });
       
       if (fileType) {
         setMediaType(fileType);
@@ -50,7 +62,14 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           type: fileType
         }]);
         setCurrentIndex(0);
-        setIsLoading(false);
+        
+        // 测试 URL 可访问性
+        testUrl(ctx.urls.downloadUrl).then(isAccessible => {
+          if (!isAccessible) {
+            setError('无法访问媒体文件，请检查网络连接或文件权限');
+          }
+          setIsLoading(false);
+        });
       } else {
         setError('不支持的文件格式');
         setIsLoading(false);
@@ -63,6 +82,23 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   // 当前媒体文件
   const currentFile = playlist[currentIndex];
+
+  // 测试 URL 是否可访问
+  const testUrl = async (url: string) => {
+    try {
+      console.log('测试 URL 可访问性:', url);
+      const response = await fetch(url, { method: 'HEAD' });
+      console.log('URL 测试结果:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('URL 测试失败:', error);
+      return false;
+    }
+  };
 
   // 播放/暂停
   const togglePlayPause = () => {
@@ -209,8 +245,32 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     playNext();
   };
 
-  const handleError = () => {
-    setError('媒体文件加载失败');
+  const handleError = (e: React.SyntheticEvent<HTMLVideoElement | HTMLAudioElement, Event>) => {
+    const target = e.target as HTMLVideoElement | HTMLAudioElement;
+    const error = target.error;
+    let errorMessage = '媒体文件加载失败';
+    
+    if (error) {
+      switch (error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = '媒体加载被中止';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = '网络错误，无法加载媒体文件';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = '媒体文件解码失败';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = '不支持的媒体格式或文件损坏';
+          break;
+        default:
+          errorMessage = `媒体加载失败 (错误代码: ${error.code})`;
+      }
+    }
+    
+    console.error('媒体播放器错误:', error, 'URL:', currentFile?.url);
+    setError(errorMessage);
     setIsLoading(false);
   };
 
