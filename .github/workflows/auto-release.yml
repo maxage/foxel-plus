@@ -170,7 +170,7 @@ jobs:
           
           RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
           
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
@@ -179,7 +179,7 @@ jobs:
         with:
           tag_name: foxel-code-viewer@${{ env.NEW_VERSION }}
           name: foxel-code-viewer v${{ env.NEW_VERSION }}
-          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-code-viewer/dist/plugin.js
           draft: false
           prerelease: false
@@ -188,10 +188,10 @@ jobs:
       
       - name: 复制到根目录
         run: |
-          cp ./foxel-code-viewer/dist/plugin.js ./foxel-code-viewer-plus.js
+          cp ./foxel-code-viewer/dist/plugin.js ./foxel-code-viewer.js
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./foxel-code-viewer-plus.js
+          git add ./foxel-code-viewer.js
           git commit -m "chore: 更新 foxel-code-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
           git push
 
@@ -314,7 +314,7 @@ jobs:
           
           RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
           
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
@@ -323,7 +323,7 @@ jobs:
         with:
           tag_name: foxel-image-viewer@${{ env.NEW_VERSION }}
           name: foxel-image-viewer v${{ env.NEW_VERSION }}
-          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-image-viewer/dist/plugin.js
           draft: false
           prerelease: false
@@ -332,10 +332,10 @@ jobs:
       
       - name: 复制到根目录
         run: |
-          cp ./foxel-image-viewer/dist/plugin.js ./foxel-image-viewer-plus.js
+          cp ./foxel-image-viewer/dist/plugin.js ./foxel-image-viewer.js
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./foxel-image-viewer-plus.js
+          git add ./foxel-image-viewer.js
           git commit -m "chore: 更新 foxel-image-viewer 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
           git push
 
@@ -458,7 +458,7 @@ jobs:
           
           RELEASE_NOTES="$RELEASE_NOTES\n## 📦 安装方式\n\n1. 下载 \`plugin.js\` 文件\n2. 在 Foxel 的"应用"页面安装插件\n3. 选择对应的文件类型即可使用\n\n## 🔗 相关链接\n\n- [项目主页](https://github.com/maxage/foxel-plus)\n- [问题反馈](https://github.com/maxage/foxel-plus/issues)\n- [功能建议](https://github.com/maxage/foxel-plus/discussions)"
           
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
@@ -467,7 +467,7 @@ jobs:
         with:
           tag_name: foxel-media-player@${{ env.NEW_VERSION }}
           name: foxel-media-player v${{ env.NEW_VERSION }}
-          body: ${{ steps.release-notes.outputs.RELEASE_NOTES }}
+          body: ${{ steps.release-notes.outputs.body }}
           files: ./foxel-media-player/dist/plugin.js
           draft: false
           prerelease: false
@@ -476,9 +476,9 @@ jobs:
       
       - name: 复制到根目录
         run: |
-          cp ./foxel-media-player/dist/plugin.js ./foxel-media-player-plus.js
+          cp ./foxel-media-player/dist/plugin.js ./foxel-media-player.js
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./foxel-media-player-plus.js
+          git add ./foxel-media-player.js
           git commit -m "chore: 更新 foxel-media-player 构建产物到 v${{ env.NEW_VERSION }}" || exit 0
           git push
