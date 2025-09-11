@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - 'foxel-*/**'
-      - 'foxel-*.js'
     branches:
       - main
   workflow_dispatch:
@@ -20,8 +19,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
-      
+        fetch-depth: 0 # Required for diffing
+        
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -31,209 +30,61 @@ jobs:
       id: detect-plugins
       run: |
         echo "🔍 Detecting changed plugins..."
-        CHANGED_PLUGINS=""
+        # Use git diff to find changed directories starting with 'foxel-'
+        CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | grep '^foxel-.*/' | xargs -n 1 dirname | sort -u)
         
-        # Check for changes in plugin directories
-        for plugin_dir in foxel-*/; do
-          if [ -d "$plugin_dir" ]; then
-            plugin_name=$(basename "$plugin_dir")
-            if git diff --name-only HEAD~1 HEAD | grep -q "^$plugin_dir"; then
-              CHANGED_PLUGINS="$CHANGED_PLUGINS $plugin_name"
-              echo "📦 Changed plugin: $plugin_name"
-            fi
-          fi
-        done
-        
-        # Check for changes in root plugin files
-        for plugin_file in foxel-*.js; do
-          if [ -f "$plugin_file" ]; then
-            plugin_name=$(basename "$plugin_file" .js)
-            if git diff --name-only HEAD~1 HEAD | grep -q "^$plugin_file"; then
-              CHANGED_PLUGINS="$CHANGED_PLUGINS $plugin_name"
-              echo "📦 Changed plugin file: $plugin_name"
-            fi
-          fi
-        done
-        
-        if [ -z "$CHANGED_PLUGINS" ]; then
-          echo "No plugin changes detected"
+        if [ -z "$CHANGED_DIRS" ]; then
+          echo "No plugin changes detected in directories."
           echo "changed=false" >> $GITHUB_OUTPUT
         else
+          echo "📦 Changed plugin directories found: $CHANGED_DIRS"
+          # Convert list of directories to a space-separated string for the output
+          PLUGINS_STRING=$(echo $CHANGED_DIRS | tr '\n' ' ')
           echo "changed=true" >> $GITHUB_OUTPUT
-          echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
+          echo "plugins=${PLUGINS_STRING}" >> $GITHUB_OUTPUT
         fi
         
-    - name: Get version from changed plugins
-      id: get-version
+    - name: Process and Release Changed Plugins
       if: steps.detect-plugins.outputs.changed == 'true'
       run: |
-        echo "📦 Getting version from changed plugins..."
-        VERSION="1.0.0"  # Default version
-        
-        # Get version from first changed plugin
-        for plugin in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin" ] && [ -f "$plugin/package.json" ]; then
-            VERSION=$(node -p "require('./$plugin/package.json').version")
-            echo "📦 Plugin $plugin version: $VERSION"
-            break
-          fi
-        done
-        
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-        
-    - name: Check if release exists
-      id: check-release
-      run: |
-        TAG=${{ steps.get-version.outputs.tag }}
-        if git rev-parse "$TAG" >/dev/null 2>&1; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "🏷️ Tag $TAG already exists"
-        else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "🆕 Tag $TAG does not exist, will create release"
-        fi
-        
-    - name: Build changed plugins
-      if: steps.check-release.outputs.exists == 'false'
-      run: |
-        echo "🔨 Building changed plugins..."
-        
-        for plugin in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin" ] && [ -f "$plugin/package.json" ]; then
-            echo "📦 Building plugin: $plugin"
-            cd "$plugin"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        for plugin_dir in ${{ steps.detect-plugins.outputs.plugins }}; do
+          if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/package.json" ]; then
+            echo "--- Processing plugin: $plugin_dir ---"
+            cd "$plugin_dir"
+
+            # Bump version using npm version patch
+            # The -m flag creates a version commit and an annotated tag
+            npm version patch -m "chore(release): release %s"
+            
+            # Get the new version from package.json
+            NEW_VERSION=$(node -p "require('./package.json').version")
+            TAG_NAME="$plugin_dir-v$NEW_VERSION"
+            echo "🚀 New version for $plugin_dir is $NEW_VERSION"
+            echo "🏷 Corresponding tag will be $TAG_NAME"
+
+            # Build the plugin
+            echo "🔨 Building plugin..."
             npm ci
             npm run build
-            cd ..
-            echo "✅ Plugin $plugin built successfully"
-          fi
-        done
-        
-    - name: Prepare release files
-      if: steps.check-release.outputs.exists == 'false'
-      run: |
-        mkdir -p release
-        echo "📦 Preparing release files for changed plugins..."
-        
-        # Copy plugin files
-        for plugin in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin" ] && [ -f "$plugin/dist/plugin.js" ]; then
-            cp "$plugin/dist/plugin.js" "release/$plugin.js"
-            FILE_SIZE=$(du -h "release/$plugin.js" | cut -f1)
-            echo "📏 Plugin $plugin file size: $FILE_SIZE"
-          fi
-        done
-        
-        # Create release notes
-        cat > release/RELEASE_NOTES.md << EOF
-        # 🎉 Foxel Plus Plugins v${{ steps.get-version.outputs.version }}
-        
-        ## 📦 包含的插件
-        
-        EOF
-        
-        # Add plugin information
-        for plugin in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin" ] && [ -f "$plugin/package.json" ]; then
-            PLUGIN_NAME=$(node -p "require('./$plugin/package.json').name")
-            PLUGIN_DESC=$(node -p "require('./$plugin/package.json').description")
-            PLUGIN_AUTHOR=$(node -p "require('./$plugin/package.json').author")
-            PLUGIN_VERSION=$(node -p "require('./$plugin/package.json').version")
-            FILE_SIZE=$(du -h "release/$plugin.js" | cut -f1)
             
-            cat >> release/RELEASE_NOTES.md << EOF
-        ### 🔌 $PLUGIN_NAME (v$PLUGIN_VERSION)
-        
-        **描述**: $PLUGIN_DESC  
-        **作者**: $PLUGIN_AUTHOR  
-        **文件大小**: $FILE_SIZE  
-        **下载**: [\`$plugin.js\`](https://github.com/maxage/foxel-plus/releases/latest/download/$plugin.js)
-        
-        EOF
+            # Create the GitHub Release
+            echo "📦 Creating GitHub Release for $TAG_NAME..."
+            gh release create "$TAG_NAME" \
+              --title "$plugin_dir v$NEW_VERSION" \
+              --notes "Automated release for $plugin_dir version $NEW_VERSION." \
+              "dist/plugin.js"
+
+            cd ..
+            echo "✅ Successfully processed and released $plugin_dir."
           fi
         done
-        
-        cat >> release/RELEASE_NOTES.md << EOF
-        
-        ## 🚀 安装方法
-        
-        1. 下载所需的插件文件
-        2. 在 Foxel 的"应用"页面添加插件
-        3. 输入对应的插件 URL
-        4. 安装完成后即可使用
-        
-        ## 🔧 技术特性
-        
-        - **完全自包含** - 单文件输出，无外部依赖
-        - **类型安全** - 基于 TypeScript 开发
-        - **现代化 UI** - 使用 React 19 构建
-        - **高性能** - ESBuild 优化构建
-        - **即插即用** - 符合 Foxel 插件规范
-        
-        ## 📝 更新日志
-        
-        本次更新包含以下改进：
-        - 支持多插件仓库结构
-        - 优化了构建配置，严格按照 Foxel 官方指南
-        - 改进了插件元数据解析
-        - 提升了整体性能和稳定性
-        
-        ---
-        
-        **自动构建**: 此版本由 GitHub Actions 自动构建和发布  
-        **构建时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')
-        EOF
-        
-        echo "📋 Release files prepared:"
-        ls -la release/
-        
-    - name: Create Git Tag
-      if: steps.check-release.outputs.exists == 'false'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag -a ${{ steps.get-version.outputs.tag }} -m "Release ${{ steps.get-version.outputs.tag }}"
-        git push origin ${{ steps.get-version.outputs.tag }}
-        echo "🏷️ Created and pushed tag: ${{ steps.get-version.outputs.tag }}"
-        
-    - name: Create GitHub Release
-      if: steps.check-release.outputs.exists == 'false'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ steps.get-version.outputs.tag }}
-        name: Foxel Plus Plugins ${{ steps.get-version.outputs.tag }}
-        files: |
-          release/*.js
-          release/RELEASE_NOTES.md
-        body_path: release/RELEASE_NOTES.md
-        draft: false
-        prerelease: false
+
+        # Push all version bumps and tags at once after the loop
+        echo "⬆️ Pushing all version changes and tags to the repository..."
+        git push --follow-tags
+        echo "🎉 All changed plugins have been successfully released."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Update root plugin files
-      if: steps.check-release.outputs.exists == 'false'
-      run: |
-        echo "📁 Updating root plugin files..."
-        
-        # Update root plugin files for changed plugins
-        for plugin in ${{ steps.detect-plugins.outputs.plugins }}; do
-          if [ -d "$plugin" ] && [ -f "$plugin/dist/plugin.js" ]; then
-            cp "$plugin/dist/plugin.js" "$plugin.js"
-            echo "📁 Updated root file: $plugin.js"
-          fi
-        done
-        
-        # Commit changes
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add foxel-*.js
-        git commit -m "chore: update root plugin files for v${{ steps.get-version.outputs.version }}"
-        git push origin main
-        echo "📁 Updated root plugin files"
-        
-    - name: Skip release
-      if: steps.check-release.outputs.exists == 'true'
-      run: |
-        echo "⏭️ Release ${{ steps.get-version.outputs.tag }} already exists, skipping"

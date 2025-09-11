@@ -970,7 +970,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     return (
       <div
         ref={containerRef}
-        id="foxel-code-viewer-plus"
+        id="foxel-code-editor-plus"
         style={{
           width: '100%',
           height: '100%',
@@ -994,7 +994,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     return (
       <div
         ref={containerRef}
-        id="foxel-code-viewer-plus"
+        id="foxel-code-editor-plus"
         style={{
           width: '100%',
           height: '100%',
@@ -1032,7 +1032,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   return (
     <div
       ref={containerRef}
-      id="foxel-code-viewer-plus"
+      id="foxel-code-editor-plus"
       style={{
         width: '100%',
         height: '100%',

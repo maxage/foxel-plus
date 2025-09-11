@@ -151,6 +151,8 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
 
   // 处理从Foxel传递过来的文件
   useEffect(() => {
+    console.log('Foxel Media Player: useEffect 触发', { ctx, entry: ctx?.entry, downloadUrl: ctx?.urls?.downloadUrl });
+    
     if (ctx && ctx.entry && ctx.urls.downloadUrl) {
       const fileName = ctx.entry.name;
       const fileUrl = ctx.urls.downloadUrl;
@@ -171,23 +173,40 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
         
         console.log('Foxel Media Player: 创建媒体文件对象', mediaFile);
         
-        // 直接设置为当前文件，不添加到播放列表
+        // 直接设置为当前文件
         setCurrentFile(mediaFile);
         setLoading(false);
+        
+        console.log('Foxel Media Player: 已设置currentFile', mediaFile);
       } else {
         console.log('Foxel Media Player: 不支持的文件类型', fileName);
         setLoading(false);
       }
     } else {
-      console.log('Foxel Media Player: 没有接收到文件信息', { ctx: !!ctx, entry: !!ctx?.entry, downloadUrl: !!ctx?.urls?.downloadUrl });
+      console.log('Foxel Media Player: 没有接收到文件信息', { 
+        hasCtx: !!ctx, 
+        hasEntry: !!ctx?.entry, 
+        hasDownloadUrl: !!ctx?.urls?.downloadUrl,
+        ctx: ctx
+      });
       setLoading(false);
     }
   }, [ctx]);
 
   // 当currentFile变化时自动开始播放
   useEffect(() => {
-    if (currentFile && (audioRef.current || videoRef.current)) {
+    if (currentFile) {
       console.log('Foxel Media Player: 开始播放文件', currentFile);
+      
+      // 设置媒体元素的src属性
+      if (currentFile.type === 'video' && videoRef.current) {
+        videoRef.current.src = currentFile.url;
+        videoRef.current.load(); // 重新加载视频
+      } else if (currentFile.type === 'audio' && audioRef.current) {
+        audioRef.current.src = currentFile.url;
+        audioRef.current.load(); // 重新加载音频
+      }
+      
       // 延迟一点时间确保媒体元素已经设置好src
       setTimeout(() => {
         const mediaElement = currentFile.type === 'video' ? videoRef.current : audioRef.current;
@@ -196,7 +215,7 @@ const App: React.FC<{ ctx: PluginMountCtx }> = ({ ctx }) => {
             console.error('Foxel Media Player: 播放失败', err);
           });
         }
-      }, 100);
+      }, 200);
     }
   }, [currentFile]);
 
