@@ -1,0 +1,23 @@
+#foxel-code-editor-plus .preview-view {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+#foxel-code-editor-plus .preview-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: none;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#foxel-code-editor-plus .markdown-preview {
+  max-width: 100%;
+  word-wrap: break-word;
+  padding: 20px;
+  line-height: 1.6;
+}

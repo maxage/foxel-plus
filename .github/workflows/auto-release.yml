@@ -19,7 +19,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Required for diffing
+        fetch-depth: 0 # Required for diffing and log history
         
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -30,7 +30,6 @@ jobs:
       id: detect-plugins
       run: |
         echo "🔍 Detecting changed plugins..."
-        # Use git diff to find changed directories starting with 'foxel-'
         CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | grep '^foxel-.*/' | xargs -n 1 dirname | sort -u)
         
         if [ -z "$CHANGED_DIRS" ]; then
@@ -38,7 +37,6 @@ jobs:
           echo "changed=false" >> $GITHUB_OUTPUT
         else
           echo "📦 Changed plugin directories found: $CHANGED_DIRS"
-          # Convert list of directories to a space-separated string for the output
           PLUGINS_STRING=$(echo $CHANGED_DIRS | tr '\n' ' ')
           echo "changed=true" >> $GITHUB_OUTPUT
           echo "plugins=${PLUGINS_STRING}" >> $GITHUB_OUTPUT
@@ -55,26 +53,46 @@ jobs:
             echo "--- Processing plugin: $plugin_dir ---"
             cd "$plugin_dir"
 
-            # Bump version using npm version patch
-            # The -m flag creates a version commit and an annotated tag
-            npm version patch -m "chore(release): release %s"
+            # Get current version and find the last tag for this plugin
+            CURRENT_VERSION=$(node -p "require('./package.json').version")
+            LAST_TAG=$(git tag --list "$plugin_dir-v*" | sort -V | tail -n 1)
             
-            # Get the new version from package.json
+            # Bump version
+            npm version patch -m "chore(release): %s"
+            
+            # Get new version and define new tag
             NEW_VERSION=$(node -p "require('./package.json').version")
-            TAG_NAME="$plugin_dir-v$NEW_VERSION"
-            echo "🚀 New version for $plugin_dir is $NEW_VERSION"
-            echo "🏷 Corresponding tag will be $TAG_NAME"
+            NEW_TAG="$plugin_dir-v$NEW_VERSION"
+            echo "🚀 New version for $plugin_dir: $NEW_VERSION"
 
-            # Build the plugin
+            # Generate Release Notes from commit messages
+            echo "📝 Generating release notes..."
+            RELEASE_NOTES="## 本次更新内容\n\n"
+            if [ -z "$LAST_TAG" ]; then
+              # If no previous tag, get all commits for this plugin's directory
+              COMMITS=$(git log --pretty=format:"- %s" -- "$plugin_dir")
+            else
+              # Get commits since the last tag for this plugin's directory
+              COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" -- "$plugin_dir")
+            fi
+            
+            if [ -z "$COMMITS" ]; then
+              RELEASE_NOTES+="本次发布无具体的提交说明。"
+            else
+              RELEASE_NOTES+="$COMMITS"
+            fi
+            echo -e "$RELEASE_NOTES" # For logging
+
+            # Build plugin
             echo "🔨 Building plugin..."
             npm ci
             npm run build
             
-            # Create the GitHub Release
-            echo "📦 Creating GitHub Release for $TAG_NAME..."
-            gh release create "$TAG_NAME" \
+            # Create GitHub Release
+            echo "📦 Creating GitHub Release for $NEW_TAG..."
+            gh release create "$NEW_TAG" \
               --title "$plugin_dir v$NEW_VERSION" \
-              --notes "Automated release for $plugin_dir version $NEW_VERSION." \
+              --notes-file <(echo -e "$RELEASE_NOTES") \
               "dist/plugin.js"
 
             cd ..
@@ -82,9 +100,9 @@ jobs:
           fi
         done
 
-        # Push all version bumps and tags at once after the loop
-        echo "⬆️ Pushing all version changes and tags to the repository..."
+        # Push all version bumps and tags at once
+        echo "⬆️ Pushing version changes and tags to repository..."
         git push --follow-tags
-        echo "🎉 All changed plugins have been successfully released."
+        echo "🎉 All changed plugins have been released."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
