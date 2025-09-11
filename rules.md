@@ -53,24 +53,24 @@ fix(foxel-image-viewer-plus): 修复了查看 SVG 文件时崩溃的问题
 
 ### 3.1 插件文件夹命名规范
 
-**所有插件文件夹必须遵循统一的命名格式：`foxel-<功能名>-plus`**
+**所有插件文件夹必须遵循统一的命名格式：`foxel-<功能名>`**
 
 #### 命名规则
-- 格式：`foxel-<功能名>-plus`
+- 格式：`foxel-<功能名>`
 - 功能名使用小写字母和连字符
-- 必须以 `-plus` 结尾，表示这是增强版插件
+- 简洁明了，避免冗余后缀
 
 #### 示例
 ```
 ✅ 正确格式：
-foxel-code-viewer-plus
-foxel-image-viewer-plus
-foxel-media-player-plus
-
-❌ 错误格式：
 foxel-code-viewer
 foxel-image-viewer
 foxel-media-player
+
+❌ 错误格式：
+foxel-code-viewer-plus
+foxel-image-viewer-plus
+foxel-media-player-plus
 ```
 
 #### 重命名影响

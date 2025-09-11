@@ -171,8 +171,8 @@ git clone https://github.com/maxage/foxel-plus.git
 cd foxel-plus
 
 # 复制模板
-cp -r foxel-image-viewer-plus foxel-your-plugin-name-plus
-cd foxel-your-plugin-name-plus
+cp -r foxel-image-viewer foxel-your-plugin-name
+cd foxel-your-plugin-name
 
 # 修改插件信息
 # 编辑 package.json 中的 name, description 等字段

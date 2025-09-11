@@ -13,9 +13,9 @@ jobs:
     strategy:
       matrix:
         plugin: [
-          'foxel-image-viewer-plus',
-          'foxel-code-viewer-plus',
-          'foxel-media-player-plus'
+          'foxel-image-viewer',
+          'foxel-code-viewer',
+          'foxel-media-player'
         ]
     
     steps:
