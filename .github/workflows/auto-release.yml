@@ -29,25 +29,21 @@ jobs:
           echo "Current commit: ${{ github.sha }}"
           
           # 检测变更的插件目录
-          CHANGED_PLUGINS="["
-          FIRST=true
+          CHANGED_PLUGINS=""
           
           for plugin_dir in foxel-*; do
             if [ -d "$plugin_dir" ]; then
               # 检查插件目录是否有变更
               if git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -q "^$plugin_dir/"; then
                 echo "检测到插件变更: $plugin_dir"
-                if [ "$FIRST" = true ]; then
-                  CHANGED_PLUGINS="$CHANGED_PLUGINS\"$plugin_dir\""
-                  FIRST=false
+                if [ -z "$CHANGED_PLUGINS" ]; then
+                  CHANGED_PLUGINS="$plugin_dir"
                 else
-                  CHANGED_PLUGINS="$CHANGED_PLUGINS,\"$plugin_dir\""
+                  CHANGED_PLUGINS="$CHANGED_PLUGINS,$plugin_dir"
                 fi
               fi
             fi
           done
-          
-          CHANGED_PLUGINS="$CHANGED_PLUGINS]"
           
           echo "变更的插件: $CHANGED_PLUGINS"
           echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
@@ -61,7 +57,7 @@ jobs:
       pull-requests: read
     strategy:
       matrix:
-        plugin: ${{ fromJson(needs.detect-changes.outputs.plugins) }}
+        plugin: ${{ split(needs.detect-changes.outputs.plugins, ',') }}
     steps:
       - uses: actions/checkout@v4
         with:
