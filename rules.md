@@ -30,14 +30,14 @@
     *   `test`: 增加测试
     *   `chore`: 构建过程或辅助工具的变动
 
-*   **范围 (Scope)**: **必须**是本次提交影响的插件目录名。例如 `foxel-code-editor-plus`。
+*   **范围 (Scope)**: **必须**是本次提交影响的插件目录名。例如 `foxel-code-viewer`。
 
 *   **主题 (Subject)**: 简明扼要地描述本次提交的目的。
 
 ### 示例
 
 ```
-feat(foxel-code-editor-plus): 增加 Markdown 预览功能
+feat(foxel-code-viewer): 增加 Markdown 预览功能
 
 在代码编辑器中为 Markdown 文件增加了实时预览模式。
 
@@ -46,31 +46,31 @@ feat(foxel-code-editor-plus): 增加 Markdown 预览功能
 ```
 
 ```
-fix(foxel-image-viewer-plus): 修复了查看 SVG 文件时崩溃的问题
+fix(foxel-image-viewer): 修复了查看 SVG 文件时崩溃的问题
 ```
 
 ## 3. 项目结构规范
 
 ### 3.1 插件文件夹命名规范
 
-**所有插件文件夹必须遵循统一的命名格式：`foxel-<功能名>`**
+**所有插件文件夹必须遵循统一的命名格式：`foxel-<插件名>-<功能名>`**
 
 #### 命名规则
-- 格式：`foxel-<功能名>`
-- 功能名使用小写字母和连字符
-- 简洁明了，避免冗余后缀
+- 插件名用于描述内容类型，如 `code`、`image`、`ebook`
+- 功能名用于描述能力，如 `viewer`、`editor`、`reader`
+- 仅使用小写字母和连字符，保持简洁、语义清晰
 
 #### 示例
 ```
 ✅ 正确格式：
 foxel-code-viewer
 foxel-image-viewer
-foxel-media-player
+foxel-ebook-reader
 
 ❌ 错误格式：
-foxel-code-viewer-plus
+foxel-code
 foxel-image-viewer-plus
-foxel-media-player-plus
+foxel-ebookreader
 ```
 
 #### 重命名影响
@@ -132,7 +132,7 @@ sequenceDiagram
 每个插件都应作为一个独立的子目录存在，并包含以下标准文件结构：
 
 ```
-foxel-<功能名>-plus/
+foxel-<插件名>-<功能名>/
 ├── dist/
 │   └── plugin.js         # 构建产物 (自动生成, .gitignore 中应忽略)
 ├── src/
@@ -152,10 +152,10 @@ foxel-<功能名>-plus/
 
 ### 4.1 插件命名规范
 
-- **目录名**: `foxel-<功能名>-plus`
-- **插件 key**: `com.foxel-plus.<功能名>-plus`
-- **显示名称**: `<功能名> Plus`
-- **包名**: `foxel-<功能名>-plus`
+- **目录名**: `foxel-<插件名>-<功能名>`
+- **插件 key**: `com.foxel-plus.<插件名>-<功能名>`
+- **显示名称**: `<插件中文名><功能中文名>`（如“代码查看器”、“图书阅读器”）
+- **包名**: `foxel-<插件名>-<功能名>`
 
 ### 4.2 必需文件说明
 
@@ -168,7 +168,7 @@ foxel-<功能名>-plus/
 
 `package.json` 文件是插件的身份标识，必须包含以下核心字段：
 
-*   `name`: 插件名称，格式为 `foxel-<功能>-plus` (例如: `foxel-code-editor-plus`)。
+*   `name`: 插件名称，格式为 `foxel-<插件名>-<功能名>` (例如: `foxel-code-viewer`)。
 *   `version`: 插件版本号，遵循 [SemVer](https://semver.org/) 规范。**此版本号将由自动化流程管理，请勿手动修改。**
 *   `description`: 一句话描述插件的核心功能。
 *   `author`: 开发者名称，请统一使用 "Jason"。
@@ -215,8 +215,8 @@ declare const PLUGIN_VERSION: string;
 declare const PLUGIN_AUTHOR: string;
 
 const plugin: RegisteredPlugin = {
-  key: 'com.foxel-plus.<功能名>-plus',
-  name: '<功能名> Plus',
+  key: 'com.foxel-plus.<插件名>-<功能名>',
+  name: '<插件中文名><功能中文名>',
   version: PLUGIN_VERSION,
   description: '功能描述',
   author: PLUGIN_AUTHOR,
@@ -235,7 +235,7 @@ const plugin: RegisteredPlugin = {
   mount: (container: HTMLElement, ctx) => {
     try {
       // 设置容器 ID 用于样式隔离
-      container.id = 'foxel-<功能名>-plus';
+      container.id = 'foxel-<插件名>-<功能名>';
       
       // 清理容器
       container.innerHTML = '';
@@ -270,7 +270,7 @@ if (typeof window !== 'undefined' && window.FoxelRegister) {
 
 ### `RegisteredPlugin` 接口字段详解
 
-*   `key`: **极其重要**。插件的全局唯一标识符，必须遵循 `com.foxel-plus.<插件名>` 的格式。例如：`com.foxel-plus.code-editor-plus`。
+*   `key`: **极其重要**。插件的全局唯一标识符，必须遵循 `com.foxel-plus.<插件名>-<功能名>` 的格式。例如：`com.foxel-plus.code-viewer`。
 *   `name`: 显示在插件市场的名称，应清晰易懂。
 *   `version`: 必须与 `package.json` 中的版本号保持同步。**自动化流程会确保这一点。**
 *   `author`: 必须与 `package.json` 中的作者保持同步。
@@ -281,7 +281,7 @@ if (typeof window !== 'undefined' && window.FoxelRegister) {
 ## 7. UI 和样式
 
 *   **技术栈**: 推荐使用 React + TypeScript。
-*   **样式隔离**: 为避免污染 Foxel 全局样式，所有插件的根 DOM 元素都必须有一个**唯一 ID**，格式为 `foxel-<插件名>-plus`。所有 CSS 选择器都应基于这个 ID 进行限定。
+*   **样式隔离**: 为避免污染 Foxel 全局样式，所有插件的根 DOM 元素都必须有一个**唯一 ID**，格式为 `foxel-<插件名>-<功能名>`。所有 CSS 选择器都应基于这个 ID 进行限定。
 
 ### 7.1 主组件模板
 
@@ -295,7 +295,7 @@ interface AppProps {
 
 const App: React.FC<AppProps> = ({ ctx }) => {
   return (
-    <div id="foxel-<功能名>-plus">
+    <div id="foxel-<插件名>-<功能名>">
       {/* 插件内容 */}
     </div>
   );
@@ -306,14 +306,14 @@ export default App;
 
 ### 7.2 样式隔离规范
 
-- 所有样式必须基于容器 ID `#foxel-<功能名>-plus` 进行限定
+- 所有样式必须基于容器 ID `#foxel-<插件名>-<功能名>` 进行限定
 - 使用 CSS Modules 或 styled-components 进行样式隔离
 - 避免使用全局样式选择器
 - 示例：
 
 ```css
 /* 正确 - 基于容器 ID 限定 */
-#foxel-media-player-plus .player-controls {
+#foxel-media-player .player-controls {
   display: flex;
   align-items: center;
 }
@@ -396,7 +396,7 @@ declare global {
 
 1. **创建插件目录结构**：
    ```
-   foxel-<功能名>-plus/
+   foxel-<插件名>-<功能名>/
    ├── dist/                    # 构建产物目录 (自动生成)
    ├── src/
    │   ├── App.tsx             # 主组件
@@ -424,13 +424,13 @@ declare global {
 在提交插件代码前，AI 必须确保：
 
 #### 9.2.1 文件结构检查
-- [ ] 插件目录名格式正确：`foxel-<功能名>-plus`
+- [ ] 插件目录名格式正确：`foxel-<插件名>-<功能名>`
 - [ ] 包含所有必需文件：`src/index.tsx`, `src/App.tsx`, `package.json`, `foxel.d.ts`, `tsconfig.json`, `validate-plugin.js`
 - [ ] `foxel.d.ts` 是从模板复制的，未修改
 - [ ] `dist/` 目录在 `.gitignore` 中
 
 #### 9.2.2 代码质量检查
-- [ ] 插件 key 格式正确：`com.foxel-plus.<功能名>-plus`
+- [ ] 插件 key 格式正确：`com.foxel-plus.<插件名>-<功能名>`
 - [ ] 使用环境变量注入版本号和作者信息
 - [ ] 正确实现 `mount` 和 `unmount` 生命周期
 - [ ] 设置容器 ID 用于样式隔离
