@@ -594,7 +594,13 @@ const markdownToHtml = (markdown: string): string => {
   text = text.replace(/_(.*?)_/g, '<em>$1</em>');
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
   text = text.replace(/!\[(.*?)\]\((.*?)\)/g, '<figure><img src="$2" alt="$1"/><figcaption>$1</figcaption></figure>');
-  text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  text = text.replace(/\[(.*?)\]\((.*?)\)/g, (_match, label: string, link: string) => {
+    const href = link.trim();
+    if (href.startsWith('#')) {
+      return `<a href="${href}">${label}</a>`;
+    }
+    return `<a href="${href}" target="_blank" rel="noreferrer">${label}</a>`;
+  });
   text = text.replace(/^-{3,}$/gm, '<hr/>');
 
   text = text.replace(/^(\s*[-*+]\s.*(?:\n\s*[-*+]\s.*)*)/gm, match => {
@@ -819,38 +825,48 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     resourceUrlsRef.current = urls;
   }, [cleanResourceUrls]);
 
-  const updateActiveLocation = useCallback(() => {
-    if (docType === 'pdf' || !contentWrapperRef.current) return;
+  const getSectionPosition = useCallback((element: HTMLElement, wrapper: HTMLElement, mode: ReaderMode): number => {
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    if (mode === 'page') {
+      return wrapper.scrollLeft + (elementRect.left - wrapperRect.left);
+    }
+    return wrapper.scrollTop + (elementRect.top - wrapperRect.top);
+  }, []);
 
-    const container = contentWrapperRef.current;
-    const sectionsElements = Array.from(container.querySelectorAll('[data-section-index]')) as HTMLElement[];
-    const scrollPosition = settings.mode === 'page' ? container.scrollLeft : container.scrollTop;
-    const viewportSize = settings.mode === 'page' ? container.clientWidth : container.clientHeight;
-    let foundIndex = 0;
+  const updateActiveLocation = useCallback(() => {
+    const wrapper = contentWrapperRef.current;
+    if (docType === 'pdf' || !wrapper) return;
+
+    const sectionsElements = Array.from(wrapper.querySelectorAll('[data-section-index]')) as HTMLElement[];
+    if (sectionsElements.length === 0) return;
+
+    const referencePosition = settings.mode === 'page'
+      ? wrapper.scrollLeft + wrapper.clientWidth / 2
+      : wrapper.scrollTop + wrapper.clientHeight / 3;
+
+    let closestIndex = activeSection;
+    let closestDistance = Number.POSITIVE_INFINITY;
 
     sectionsElements.forEach(section => {
       const index = Number(section.dataset.sectionIndex);
-      if (settings.mode === 'page') {
-        const left = section.offsetLeft;
-        if (left - 32 <= scrollPosition) {
-          foundIndex = index;
-        }
-      } else {
-        const top = section.offsetTop;
-        if (top - 64 <= scrollPosition) {
-          foundIndex = index;
-        }
+      const position = getSectionPosition(section, wrapper, settings.mode);
+      const distance = Math.abs(position - referencePosition);
+      if (distance < closestDistance) {
+        closestIndex = index;
+        closestDistance = distance;
       }
     });
 
-    setActiveSection(foundIndex);
+    setActiveSection(closestIndex);
 
     const totalScrollable = settings.mode === 'page'
-      ? container.scrollWidth - container.clientWidth
-      : container.scrollHeight - container.clientHeight;
+      ? wrapper.scrollWidth - wrapper.clientWidth
+      : wrapper.scrollHeight - wrapper.clientHeight;
+    const scrollPosition = settings.mode === 'page' ? wrapper.scrollLeft : wrapper.scrollTop;
     const percentage = totalScrollable > 0 ? Math.min(1, scrollPosition / totalScrollable) : 0;
-    setProgress(prev => ({ ...prev, sectionIndex: foundIndex, percentage }));
-  }, [docType, settings.mode, setProgress]);
+    setProgress(prev => ({ ...prev, sectionIndex: closestIndex, percentage }));
+  }, [activeSection, docType, getSectionPosition, settings.mode, setProgress]);
 
   useEffect(() => {
     const container = contentWrapperRef.current;
@@ -909,15 +925,16 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const scrollToSection = useCallback(
     (index: number, highlightId?: string) => {
       if (docType === 'pdf') return;
-      const container = contentWrapperRef.current;
-      if (!container) return;
-      const target = container.querySelector(`[data-section-index="${index}"]`) as HTMLElement | null;
+      const wrapper = contentWrapperRef.current;
+      if (!wrapper) return;
+      const target = wrapper.querySelector(`[data-section-index="${index}"]`) as HTMLElement | null;
       if (!target) return;
 
+      const position = getSectionPosition(target, wrapper, settings.mode);
       if (settings.mode === 'page') {
-        container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+        wrapper.scrollTo({ left: position, behavior: 'smooth' });
       } else {
-        container.scrollTo({ top: target.offsetTop - 32, behavior: 'smooth' });
+        wrapper.scrollTo({ top: Math.max(0, position - 32), behavior: 'smooth' });
       }
 
       setActiveSection(index);
@@ -930,7 +947,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         }
       }
     },
-    [docType, settings.mode]
+    [docType, getSectionPosition, settings.mode]
   );
 
   const scrollToSectionById = useCallback(
