@@ -62,7 +62,7 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  if (window.FoxelRegister) {
+  if (typeof window.FoxelRegister === 'function') {
     register();
   } else {
     console.warn('FoxelRegister 函数暂不可用，稍后重试注册');

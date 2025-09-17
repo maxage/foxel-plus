@@ -76,7 +76,9 @@ const DEFAULT_SETTINGS: ReaderSettings = {
   mode: 'scroll'
 };
 
-const THEME_STYLES: Record<ReaderTheme, CSSProperties> = {
+type ThemeStyle = CSSProperties & Record<string, string>;
+
+const THEME_STYLES: Record<ReaderTheme, ThemeStyle> = {
   light: {
     '--reader-bg': '#f7f7f5',
     '--reader-surface': '#ffffff',
@@ -97,7 +99,7 @@ const THEME_STYLES: Record<ReaderTheme, CSSProperties> = {
   }
 };
 
-const PDF_VIEWER_MESSAGE_TARGETS = ['application/pdf', 'text/html'];
+const PDF_VIEWER_MESSAGE_TARGETS: readonly string[] = ['application/pdf', 'text/html'];
 
 const READER_STYLES = `
 #foxel-ebook-reader {
@@ -461,7 +463,7 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
           title: '正文',
           level: 1,
           html,
-          plainText: container?.textContent ?? ''
+          plainText: ''
         }
       ],
       toc: [
@@ -547,10 +549,18 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
   return { sections, toc };
 };
 
+const HTML_ESCAPE_LOOKUP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;'
+};
+
+const escapeHtml = (input: string): string => input.replace(/[&<>]/g, (ch: string) => HTML_ESCAPE_LOOKUP[ch] ?? ch);
+
 const markdownToHtml = (markdown: string): string => {
   let text = markdown;
 
-  text = text.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.replace(/[&<>]/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[ch] || ch))}</code></pre>`);
+  text = text.replace(/```([\s\S]*?)```/g, (_match, code: string) => `<pre><code>${escapeHtml(code)}</code></pre>`);
   text = text.replace(/^######\s?(.*)$/gm, '<h6>$1</h6>');
   text = text.replace(/^#####\s?(.*)$/gm, '<h5>$1</h5>');
   text = text.replace(/^####\s?(.*)$/gm, '<h4>$1</h4>');
@@ -585,7 +595,7 @@ const markdownToHtml = (markdown: string): string => {
 };
 
 const plainTextToHtml = (text: string): string => {
-  const escaped = text.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch] || ch));
+  const escaped = escapeHtml(text);
   const paragraphs = escaped.split(/\n{2,}/).map(line => line.replace(/\n/g, '<br/>').trim());
   return paragraphs.map(p => `<p>${p}</p>`).join('');
 };
@@ -984,7 +994,11 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   }, [setSettings]);
 
   const adjustLineHeight = useCallback((delta: number) => {
-    setSettings(prev => ({ ...prev, lineHeight: Number(Math.min(2.4, Math.max(1.2, (prev.lineHeight + delta).toFixed(1)))) }));
+    setSettings(prev => {
+      const nextLineHeight = Number((prev.lineHeight + delta).toFixed(1));
+      const clamped = Math.min(2.4, Math.max(1.2, nextLineHeight));
+      return { ...prev, lineHeight: clamped };
+    });
   }, [setSettings]);
 
   const adjustWidth = useCallback((delta: number) => {
@@ -1072,7 +1086,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       const entry = archive.get(fullPath);
       if (!entry) return null;
       const data = await readZipEntry(buffer, entry);
-      const blob = new Blob([data], { type: guessMimeType(href) });
+      const raw = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+      const blob = new Blob([raw], { type: guessMimeType(href) });
       const blobUrl = URL.createObjectURL(blob);
       blobUrls.push(blobUrl);
       return blobUrl;
@@ -1107,7 +1122,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       const entry = archive.get(contentPath);
       if (!entry) continue;
 
-      const xhtml = decodeText(await readZipEntry(buffer, entry));
+      const xhtmlBytes = await readZipEntry(buffer, entry);
+      const xhtml = decodeText(xhtmlBytes);
       const parser = new DOMParser();
       const xhtmlDoc = parser.parseFromString(xhtml, 'text/html');
       await inlineStyles(xhtmlDoc);
@@ -1162,7 +1178,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       const navPath = resolveEpubPath(basePath, navItem.getAttribute('href') || '');
       const navEntry = navPath ? archive.get(navPath) : null;
       if (navEntry) {
-        const navContent = decodeText(await readZipEntry(buffer, navEntry));
+          const navContentBytes = await readZipEntry(buffer, navEntry);
+          const navContent = decodeText(navContentBytes);
         const navDoc = new DOMParser().parseFromString(navContent, 'text/html');
         const navList = navDoc.querySelector('nav[epub|type="toc"], nav[type="toc"], nav');
         if (navList) {
@@ -1347,7 +1364,9 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     if (docType !== 'pdf' || !pdfFrameRef.current) return;
 
     const handleMessage = (event: MessageEvent) => {
-      if (!PDF_VIEWER_MESSAGE_TARGETS.includes(event.data?.type)) return;
+    const messageType = event.data?.type;
+    const isKnownType = PDF_VIEWER_MESSAGE_TARGETS.some(target => target === messageType);
+    if (!isKnownType) return;
       if (typeof event.data?.pageNumber === 'number') {
         setPdfPage(event.data.pageNumber);
       }
