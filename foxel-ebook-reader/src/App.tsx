@@ -1228,6 +1228,20 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     })));
   }, [updateResourceUrls]);
 
+  const normalizeDownloadUrl = (rawUrl: string): string => {
+    try {
+      const url = new URL(rawUrl, window.location.href);
+      url.pathname = url.pathname
+        .split('/')
+        .map(segment => encodeURIComponent(decodeURIComponent(segment)))
+        .join('/');
+      return url.toString();
+    } catch (error) {
+      console.warn('下载地址解析失败，使用编码后的原始地址:', error);
+      return encodeURI(rawUrl);
+    }
+  };
+
   const loadDocument = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -1255,11 +1269,13 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         }
       };
 
-      let response = await tryFetch(ctx.urls.downloadUrl);
+      const primaryUrl = normalizeDownloadUrl(ctx.urls.downloadUrl);
+
+      let response = await tryFetch(primaryUrl);
       if (!response.ok) {
-        const fallbackUrl = ctx.urls.downloadUrl.includes('?')
-          ? `${ctx.urls.downloadUrl}&download=1`
-          : `${ctx.urls.downloadUrl}?download=1`;
+        const fallbackUrl = primaryUrl.includes('?')
+          ? `${primaryUrl}&download=1`
+          : `${primaryUrl}?download=1`;
         response = await tryFetch(fallbackUrl);
       }
 
