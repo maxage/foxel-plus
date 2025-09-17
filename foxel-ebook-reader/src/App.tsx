@@ -778,7 +778,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfPage, setPdfPage] = useState(1);
   const [totalPages, setTotalPages] = useState<number | null>(null);
-  const [resourceUrls, setResourceUrls] = useState<string[]>([]);
+  const resourceUrlsRef = useRef<string[]>([]);
 
   const contentWrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -798,13 +798,13 @@ const App: React.FC<AppProps> = ({ ctx }) => {
   const applyThemeStyle = useMemo(() => THEME_STYLES[settings.theme], [settings.theme]);
 
   const cleanResourceUrls = useCallback(() => {
-    resourceUrls.forEach(url => URL.revokeObjectURL(url));
-    setResourceUrls([]);
-  }, [resourceUrls]);
+    resourceUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    resourceUrlsRef.current = [];
+  }, []);
 
   const updateResourceUrls = useCallback((urls: string[]) => {
     cleanResourceUrls();
-    setResourceUrls(urls);
+    resourceUrlsRef.current = urls;
   }, [cleanResourceUrls]);
 
   const updateActiveLocation = useCallback(() => {
