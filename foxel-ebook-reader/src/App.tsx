@@ -1231,9 +1231,34 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
     try {
       const extension = getFileExtension(ctx.filePath);
-      const response = await fetch(ctx.urls.downloadUrl);
+      const requestInit: RequestInit = {
+        credentials: 'include',
+        headers: {
+          Accept: 'application/epub+zip,application/octet-stream,*/*'
+        }
+      };
+
+      const tryFetch = async (url: string) => {
+        try {
+          return await fetch(url, requestInit);
+        } catch (networkError) {
+          console.error('电子书下载网络错误:', networkError);
+          throw new Error('网络错误，无法获取电子书内容');
+        }
+      };
+
+      let response = await tryFetch(ctx.urls.downloadUrl);
       if (!response.ok) {
-        throw new Error(`无法加载文件：${response.status}`);
+        const fallbackUrl = ctx.urls.downloadUrl.includes('?')
+          ? `${ctx.urls.downloadUrl}&download=1`
+          : `${ctx.urls.downloadUrl}?download=1`;
+        response = await tryFetch(fallbackUrl);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const message = errorText ? `${response.status} - ${errorText}` : `${response.status}`;
+        throw new Error(`无法加载文件：${message}`);
       }
 
       if (extension === 'pdf') {
