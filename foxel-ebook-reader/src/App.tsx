@@ -32,6 +32,7 @@ interface Section {
   level: number;
   html: string;
   plainText: string;
+  sourcePath: string;
 }
 
 interface SearchResult {
@@ -465,7 +466,7 @@ const sanitizeHtml = (input: string): string => {
   return doc.body.innerHTML;
 };
 
-const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocItem[] } => {
+const extractSectionsFromHtml = (html: string, sourcePath: string): { sections: Section[]; toc: TocItem[] } => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
   const container = doc.body.firstElementChild as HTMLElement | null;
@@ -477,7 +478,8 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
           title: '正文',
           level: 1,
           html,
-          plainText: ''
+          plainText: '',
+          sourcePath
         }
       ],
       toc: [
@@ -501,7 +503,8 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
           title: '正文',
           level: 1,
           html,
-          plainText: container.textContent ?? ''
+          plainText: container.textContent ?? '',
+          sourcePath
         }
       ],
       toc: [
@@ -519,14 +522,21 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
   const toc: TocItem[] = [];
 
   let headingCount = 0;
+  const usedIds = new Set<string>();
   headings.forEach((heading) => {
     const level = Number(heading.tagName.substring(1));
     const fallbackTitle = `第 ${headingCount + 1} 节`;
     const rawTitle = heading.textContent?.trim() || fallbackTitle;
-    let id = heading.id || slugify(rawTitle || fallbackTitle);
+    const baseId = heading.id || slugify(rawTitle || fallbackTitle);
+    let id = baseId;
+    let suffix = 1;
+    while (usedIds.has(id)) {
+      id = `${baseId}-${suffix++}`;
+    }
     if (!heading.id) {
       heading.id = id;
     }
+    usedIds.add(id);
 
     const sectionContainer = doc.createElement('div');
     sectionContainer.setAttribute('data-source-section', id);
@@ -552,7 +562,8 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
       title: rawTitle,
       level,
       html: htmlContent,
-      plainText
+      plainText,
+      sourcePath
     };
 
     sections.push(section);
@@ -815,6 +826,31 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   const applyThemeStyle = useMemo(() => THEME_STYLES[settings.theme], [settings.theme]);
 
+  const sectionLookup = useMemo(() => {
+    const byId = new Map<string, number>();
+    const bySource = new Map<string, Map<string, number>>();
+
+    sections.forEach((section, index) => {
+      if (section.id && !byId.has(section.id)) {
+        byId.set(section.id, index);
+      }
+
+      if (section.sourcePath) {
+        const key = section.sourcePath;
+        const map = bySource.get(key) ?? new Map<string, number>();
+        if (!map.has('')) {
+          map.set('', index);
+        }
+        if (section.id && !map.has(section.id)) {
+          map.set(section.id, index);
+        }
+        bySource.set(key, map);
+      }
+    });
+
+    return { byId, bySource };
+  }, [sections]);
+
   const cleanResourceUrls = useCallback(() => {
     resourceUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
     resourceUrlsRef.current = [];
@@ -952,12 +988,12 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   const scrollToSectionById = useCallback(
     (sectionId: string) => {
-      const index = sections.findIndex(section => section.id === sectionId);
-      if (index >= 0) {
-        scrollToSection(index, sectionId);
+      const targetIndex = sectionLookup.byId.get(sectionId);
+      if (typeof targetIndex === 'number') {
+        scrollToSection(targetIndex, sectionId);
       }
     },
-    [sections, scrollToSection]
+    [scrollToSection, sectionLookup]
   );
 
   useEffect(() => {
@@ -967,20 +1003,49 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     const handleClick = (event: MouseEvent) => {
       const anchor = (event.target as HTMLElement).closest('a');
       if (!anchor) return;
-      const href = anchor.getAttribute('href');
-      if (!href || !href.startsWith('#')) return;
+      const internalPath = anchor.getAttribute('data-internal-path');
+      const internalHash = anchor.getAttribute('data-internal-hash') || undefined;
+      const href = anchor.getAttribute('href') || '';
 
-      event.preventDefault();
-      event.stopPropagation();
-      const targetId = href.slice(1);
-      if (targetId) {
-        scrollToSectionById(targetId);
+      const tryScrollToInternalTarget = () => {
+        if (!internalPath) return false;
+        const sourceMap = sectionLookup.bySource.get(internalPath);
+        const byHash = internalHash ? sourceMap?.get(internalHash) : undefined;
+        const fallback = sourceMap?.get('');
+        const index = (typeof byHash === 'number' ? byHash : undefined)
+          ?? (internalHash ? sectionLookup.byId.get(internalHash) : undefined)
+          ?? fallback;
+        if (typeof index === 'number') {
+          scrollToSection(index, internalHash);
+          return true;
+        }
+        return false;
+      };
+
+      if (internalPath) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!tryScrollToInternalTarget() && internalHash) {
+          scrollToSectionById(internalHash);
+        }
+        return;
+      }
+
+      if (href.startsWith('#')) {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          const decoded = decodeURIComponent(href.slice(1));
+          scrollToSectionById(decoded);
+        } catch {
+          scrollToSectionById(href.slice(1));
+        }
       }
     };
 
     container.addEventListener('click', handleClick);
     return () => container.removeEventListener('click', handleClick);
-  }, [docType, scrollToSectionById]);
+  }, [docType, scrollToSectionById, sectionLookup, scrollToSection]);
 
   const addBookmark = useCallback(() => {
     if (docType === 'pdf') {
@@ -1074,9 +1139,9 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     setSettings(prev => ({ ...prev, maxWidth: Math.min(1200, Math.max(560, prev.maxWidth + delta)) }));
   }, [setSettings]);
 
-  const parseHtmlDocument = useCallback((html: string) => {
+  const parseHtmlDocument = useCallback((html: string, sourcePath: string) => {
     const sanitized = sanitizeHtml(html);
-    const { sections: parsedSections, toc: parsedToc } = extractSectionsFromHtml(sanitized);
+    const { sections: parsedSections, toc: parsedToc } = extractSectionsFromHtml(sanitized, sourcePath);
     setSections(parsedSections);
     setToc(parsedToc);
   }, []);
@@ -1092,17 +1157,17 @@ const App: React.FC<AppProps> = ({ ctx }) => {
 
   const parsePlainTextDocument = useCallback((content: string) => {
     const html = plainTextToHtml(content);
-    parseHtmlDocument(html);
-  }, [parseHtmlDocument]);
+    parseHtmlDocument(html, ctx.filePath || 'inline');
+  }, [ctx.filePath, parseHtmlDocument]);
 
   const parseMarkdownDocument = useCallback((content: string) => {
     const html = markdownToHtml(content);
-    parseHtmlDocument(html);
-  }, [parseHtmlDocument]);
+    parseHtmlDocument(html, ctx.filePath || 'inline');
+  }, [ctx.filePath, parseHtmlDocument]);
 
   const parseHtmlContent = useCallback((content: string) => {
-    parseHtmlDocument(content);
-  }, [parseHtmlDocument]);
+    parseHtmlDocument(content, ctx.filePath || 'inline');
+  }, [ctx.filePath, parseHtmlDocument]);
 
   const parseEpubDocument = useCallback(async (buffer: ArrayBuffer) => {
     const archive = readCentralDirectory(buffer);
@@ -1198,6 +1263,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       await inlineStyles(xhtmlDoc);
 
       // Replace resource URLs with blob versions
+      const contentDir = contentPath.split('/').slice(0, -1).join('/');
+
       const resourceElements = xhtmlDoc.querySelectorAll('img, image, audio, video, source');
       await Promise.all(
         Array.from(resourceElements).map(async element => {
@@ -1211,10 +1278,47 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         })
       );
 
+      const anchorElements = xhtmlDoc.querySelectorAll('a[href]');
+      anchorElements.forEach(anchor => {
+        const hrefRaw = anchor.getAttribute('href')?.trim();
+        if (!hrefRaw) return;
+
+        if (/^(https?:|mailto:)/i.test(hrefRaw)) {
+          anchor.setAttribute('target', '_blank');
+          anchor.setAttribute('rel', 'noreferrer noopener');
+          return;
+        }
+
+        let targetPath = contentPath;
+        let targetHash: string | null = null;
+
+        if (hrefRaw.startsWith('#')) {
+          targetHash = decodeURIComponent(hrefRaw.slice(1));
+        } else {
+          const [pathPart, hashPart] = hrefRaw.split('#');
+          targetPath = resolveEpubPath(contentDir, pathPart || '');
+          if (hashPart) {
+            try {
+              targetHash = decodeURIComponent(hashPart);
+            } catch {
+              targetHash = hashPart;
+            }
+          }
+        }
+
+        anchor.setAttribute('href', '#');
+        anchor.setAttribute('data-internal-path', targetPath);
+        if (targetHash) {
+          anchor.setAttribute('data-internal-hash', targetHash);
+        } else {
+          anchor.removeAttribute('data-internal-hash');
+        }
+      });
+
       const body = xhtmlDoc.body;
       if (!body) continue;
       const sanitized = sanitizeHtml(body.innerHTML);
-      const { sections: chapterSections, toc: chapterToc } = extractSectionsFromHtml(sanitized);
+      const { sections: chapterSections, toc: chapterToc } = extractSectionsFromHtml(sanitized, contentPath);
 
       if (chapterSections.length === 0) {
         loadedSections.push({
@@ -1222,7 +1326,8 @@ const App: React.FC<AppProps> = ({ ctx }) => {
           title: `章节 ${spineIndex + 1}`,
           level: 1,
           html: sanitized,
-          plainText: xhtmlDoc.body.textContent?.trim() ?? ''
+          plainText: xhtmlDoc.body.textContent?.trim() ?? '',
+          sourcePath: contentPath
         });
         loadedToc.push({
           id: `chapter-${spineIndex}`,
@@ -1240,6 +1345,36 @@ const App: React.FC<AppProps> = ({ ctx }) => {
         });
       }
     }
+
+    const indexById = new Map<string, number>();
+    const indexBySource = new Map<string, Map<string, number>>();
+    loadedSections.forEach((section, index) => {
+      if (!indexById.has(section.id)) {
+        indexById.set(section.id, index);
+      }
+      if (section.sourcePath) {
+        const sourceMap = indexBySource.get(section.sourcePath) ?? new Map<string, number>();
+        if (!sourceMap.has('')) {
+          sourceMap.set('', index);
+        }
+        if (!sourceMap.has(section.id)) {
+          sourceMap.set(section.id, index);
+        }
+        indexBySource.set(section.sourcePath, sourceMap);
+      }
+    });
+
+    // 对已有 toc 项重新索引
+    loadedToc.forEach(item => {
+      if (item.sectionIndex === undefined || item.sectionIndex < 0) {
+        const lookupIndex = indexById.get(item.id)
+          ?? (item.href ? indexBySource.get(item.href)?.get(item.id) : undefined)
+          ?? (item.href ? indexBySource.get(item.href)?.get('') : undefined);
+        if (typeof lookupIndex === 'number') {
+          item.sectionIndex = lookupIndex;
+        }
+      }
+    });
 
     // 构建导航
     const navItem = manifestItems.find(item => item.getAttribute('properties')?.includes('nav'));
@@ -1259,8 +1394,11 @@ const App: React.FC<AppProps> = ({ ctx }) => {
             if (!href || !title) return;
             const [path, hash] = href.split('#');
             const resolvedPath = resolveEpubPath(basePath, path || '');
-            const sectionId = hash || slugify(title);
-            const sectionIndex = loadedSections.findIndex(section => section.id === sectionId);
+            const decodedHash = hash ? (() => { try { return decodeURIComponent(hash); } catch { return hash; } })() : '';
+            const sectionId = decodedHash || slugify(title);
+            const sectionIndex = indexById.get(sectionId)
+              ?? indexBySource.get(resolvedPath)?.get(sectionId)
+              ?? indexBySource.get(resolvedPath)?.get('');
             if (sectionIndex >= 0) {
               items.push({
                 id: sectionId,
