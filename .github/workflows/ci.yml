@@ -15,7 +15,8 @@ jobs:
         plugin: [
           'foxel-image-viewer',
           'foxel-code-viewer',
-          'foxel-media-player'
+          'foxel-media-player',
+          'foxel-ebook-reader'
         ]
     
     steps:
