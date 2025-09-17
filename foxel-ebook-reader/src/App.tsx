@@ -452,8 +452,14 @@ const sanitizeHtml = (input: string): string => {
   });
 
   doc.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(anchor => {
-    anchor.rel = 'noreferrer noopener';
-    anchor.target = '_blank';
+    const href = anchor.getAttribute('href') || '';
+    if (href.startsWith('#')) {
+      anchor.removeAttribute('target');
+      anchor.removeAttribute('rel');
+    } else {
+      anchor.rel = 'noreferrer noopener';
+      anchor.target = '_blank';
+    }
   });
 
   return doc.body.innerHTML;
@@ -512,9 +518,12 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
   const sections: Section[] = [];
   const toc: TocItem[] = [];
 
-  headings.forEach((heading, index) => {
+  let headingCount = 0;
+  headings.forEach((heading) => {
     const level = Number(heading.tagName.substring(1));
-    let id = heading.id || slugify(heading.textContent || `section-${index}`);
+    const fallbackTitle = `第 ${headingCount + 1} 节`;
+    const rawTitle = heading.textContent?.trim() || fallbackTitle;
+    let id = heading.id || slugify(rawTitle || fallbackTitle);
     if (!heading.id) {
       heading.id = id;
     }
@@ -538,20 +547,23 @@ const extractSectionsFromHtml = (html: string): { sections: Section[]; toc: TocI
     const htmlContent = sectionContainer.innerHTML;
     const plainText = sectionContainer.textContent?.trim() ?? '';
 
-    sections.push({
+    const section: Section = {
       id,
-      title: heading.textContent?.trim() || `第 ${index + 1} 节`,
+      title: rawTitle,
       level,
       html: htmlContent,
       plainText
-    });
+    };
+
+    sections.push(section);
 
     toc.push({
       id,
-      title: heading.textContent?.trim() || `第 ${index + 1} 节`,
+      title: section.title,
       level,
-      sectionIndex: index
+      sectionIndex: sections.length - 1
     });
+    headingCount += 1;
   });
 
   return { sections, toc };
@@ -920,6 +932,38 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     },
     [docType, settings.mode]
   );
+
+  const scrollToSectionById = useCallback(
+    (sectionId: string) => {
+      const index = sections.findIndex(section => section.id === sectionId);
+      if (index >= 0) {
+        scrollToSection(index, sectionId);
+      }
+    },
+    [sections, scrollToSection]
+  );
+
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container || docType === 'pdf') return;
+
+    const handleClick = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement).closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      const targetId = href.slice(1);
+      if (targetId) {
+        scrollToSectionById(targetId);
+      }
+    };
+
+    container.addEventListener('click', handleClick);
+    return () => container.removeEventListener('click', handleClick);
+  }, [docType, scrollToSectionById]);
 
   const addBookmark = useCallback(() => {
     if (docType === 'pdf') {
