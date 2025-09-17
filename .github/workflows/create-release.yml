@@ -132,6 +132,17 @@ jobs:
         - 🎛️ 智能工具栏
         - 📱 响应式设计"
               SUPPORTED_FORMATS="JS/TS, HTML/CSS, Python, Java, C/C++, Go, Rust, 等 50+ 格式"
+            elif [[ "$plugin_name" == *"ebook"* ]]; then
+              PLUGIN_ICON="📚"
+              PLUGIN_FEATURES="- 📖 滚动/分页模式切换
+        - 🗂️ 智能目录与章节导航
+        - 🎨 主题、字号、行距自定义
+        - 🔍 全文搜索与高亮
+        - 📌 书签与阅读进度持久化
+        - 📥 EPUB 资源内联加载
+        - 📄 浏览器内置 PDF 播放
+        - ⌨️ 快捷键导航"
+              SUPPORTED_FORMATS="TXT, Markdown, HTML, EPUB, PDF"
             else
               PLUGIN_ICON="🔌"
               PLUGIN_FEATURES="- 🎯 即插即用
@@ -224,17 +235,17 @@ jobs:
         for plugin_dir in foxel-*/; do
           if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/dist/plugin.js" ]; then
             plugin_name=$(basename "$plugin_dir")
-            echo "📋 Copying $plugin_name/dist/plugin.js to root as $plugin_name-plus.js"
-            cp "$plugin_dir/dist/plugin.js" "$plugin_name-plus.js"
+            echo "📋 Copying $plugin_name/dist/plugin.js to root as $plugin_name.js"
+            cp "$plugin_dir/dist/plugin.js" "$plugin_name.js"
           fi
         done
-        
+
         echo "✅ Root plugin files updated"
-        
+
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add foxel-*-plus.js
-        git commit -m "chore: update root plugin files for ${{ inputs.version }}" || exit 0
+        git add foxel-*.js
+        git commit -m "chore(foxel-plugins): 更新根目录插件文件 ${{ inputs.version }}" || exit 0
         git push
