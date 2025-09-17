@@ -440,14 +440,22 @@ const decodeText = (data: Uint8Array | ArrayBuffer): string => {
 const sanitizeHtml = (input: string): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(input, 'text/html');
+
   doc.querySelectorAll('script, iframe, object, embed, link[rel="import"]').forEach(el => el.remove());
-  doc.querySelectorAll('[onclick], [onload], [onerror], [style*="expression"], [style*="javascript"]').forEach(el => {
+
+  doc.querySelectorAll<HTMLElement>('[onclick], [onload], [onerror], [style*="expression"], [style*="javascript"]').forEach(el => {
     Array.from(el.attributes).forEach(attr => {
       if (attr.name.startsWith('on') || /javascript:/i.test(attr.value)) {
         el.removeAttribute(attr.name);
       }
     });
   });
+
+  doc.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(anchor => {
+    anchor.rel = 'noreferrer noopener';
+    anchor.target = '_blank';
+  });
+
   return doc.body.innerHTML;
 };
 
