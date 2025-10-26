@@ -1215,31 +1215,59 @@ const App: React.FC<AppProps> = ({ ctx }) => {
     const loadedToc: TocItem[] = [];
     const blobUrls: string[] = [];
 
-    const resolveResource = async (href: string): Promise<string | null> => {
-      const fullPath = resolveEpubPath(basePath, href);
-      const entry = archive.get(fullPath);
-      if (!entry) return null;
-      const data = await readZipEntry(buffer, entry);
-      const raw = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-      const blob = new Blob([raw], { type: guessMimeType(href) });
-      const blobUrl = URL.createObjectURL(blob);
-      blobUrls.push(blobUrl);
-      return blobUrl;
+    const resolveResource = async (href: string, scopeDir?: string): Promise<string | null> => {
+      if (/^(data:|blob:)/i.test(href)) {
+        return href;
+      }
+
+      const searchBases: string[] = [];
+      if (typeof scopeDir === 'string') {
+        searchBases.push(scopeDir);
+      }
+      if (!searchBases.includes(basePath)) {
+        searchBases.push(basePath);
+      }
+
+      for (const base of searchBases) {
+        const fullPath = resolveEpubPath(base, href);
+        const entry = archive.get(fullPath);
+        if (!entry) continue;
+        const data = await readZipEntry(buffer, entry);
+        const raw = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+        const blob = new Blob([raw], { type: guessMimeType(href) });
+        const blobUrl = URL.createObjectURL(blob);
+        blobUrls.push(blobUrl);
+        return blobUrl;
+      }
+
+      return null;
     };
 
-    const inlineStyles = async (doc: Document): Promise<void> => {
+    const inlineStyles = async (doc: Document, styleBaseDir: string): Promise<void> => {
       const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
       await Promise.all(
         links.map(async link => {
           const href = link.getAttribute('href');
           if (!href) return;
-          const url = resolveEpubPath(basePath, href);
-          const entry = archive.get(url);
-          if (!entry) return;
-          const data = await readZipEntry(buffer, entry);
-          const style = doc.createElement('style');
-          style.textContent = decodeText(data);
-          link.replaceWith(style);
+
+          const styleBases: string[] = [];
+          if (styleBaseDir) {
+            styleBases.push(styleBaseDir);
+          }
+          if (!styleBases.includes(basePath)) {
+            styleBases.push(basePath);
+          }
+
+          for (const base of styleBases) {
+            const url = resolveEpubPath(base, href);
+            const entry = archive.get(url);
+            if (!entry) continue;
+            const data = await readZipEntry(buffer, entry);
+            const style = doc.createElement('style');
+            style.textContent = decodeText(data);
+            link.replaceWith(style);
+            return;
+          }
         })
       );
     };
@@ -1253,6 +1281,7 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       if (!/html|xhtml|xml/.test(manifestItem.mediaType)) continue;
 
       const contentPath = resolveEpubPath(basePath, manifestItem.href);
+      const contentDir = contentPath.split('/').slice(0, -1).join('/');
       const entry = archive.get(contentPath);
       if (!entry) continue;
 
@@ -1260,18 +1289,16 @@ const App: React.FC<AppProps> = ({ ctx }) => {
       const xhtml = decodeText(xhtmlBytes);
       const parser = new DOMParser();
       const xhtmlDoc = parser.parseFromString(xhtml, 'text/html');
-      await inlineStyles(xhtmlDoc);
+      await inlineStyles(xhtmlDoc, contentDir);
 
       // Replace resource URLs with blob versions
-      const contentDir = contentPath.split('/').slice(0, -1).join('/');
-
       const resourceElements = xhtmlDoc.querySelectorAll('img, image, audio, video, source');
       await Promise.all(
         Array.from(resourceElements).map(async element => {
           const attr = element.tagName.toLowerCase() === 'object' ? 'data' : 'src';
           const src = element.getAttribute(attr);
           if (!src) return;
-          const blobUrl = await resolveResource(src);
+          const blobUrl = await resolveResource(src, contentDir);
           if (blobUrl) {
             element.setAttribute(attr, blobUrl);
           }
